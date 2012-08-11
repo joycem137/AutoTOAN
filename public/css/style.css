@@ -218,7 +218,25 @@ td { vertical-align: top; }
    Author:
    ========================================================================== */
 
+#mainInputPage {
+    display: block;
+}
 
+#resultInformation {
+    display: none;
+}
+
+#resultHeader {
+    display: none;
+}
+
+#resultBody {
+    display: none;
+}
+
+#paragraphInput {
+    display: none;
+}
 
 
 
