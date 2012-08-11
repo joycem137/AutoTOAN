@@ -19,6 +19,8 @@ $numRows = mysql_numrows($result);
 $myParagraph = "null";
 if ($numRows > 0) {
 	$myParagraph = $myRow["data"];
-} 
-echo "{number:$paragraphIndex,data:$myParagraph}";
+}
+
+header('Content-Type: application/json');
+echo "{\"number\":$paragraphIndex,\"data\":$myParagraph}";
 ?>
