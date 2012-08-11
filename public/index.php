@@ -20,5 +20,5 @@ $myParagraph = "null";
 if ($numRows > 0) {
 	$myParagraph = $myRow["data"];
 } 
-	echo "{number:$paragraphIndex,data:$myParagraph}";
+echo "{number:$paragraphIndex,data:$myParagraph}";
 ?>
