@@ -39,7 +39,7 @@
     <div role="main">
 
         <div id="mainInputPage">
-            <form id="formParagraph">
+            <form id="formParagraphRequest">
                 Enter Paragraph #: <input type="text" name="paragraph" id="paragraphNumber"/>
             </form>
         </div>
@@ -47,7 +47,10 @@
         <div id="resultPage">
             <div id="resultHeader"></div>
             <div id="resultBody"></div>
-            <textarea id="paragraphInput" rows="30" cols="100"></textarea>
+            <form id="formParagraphChange">
+                <textarea id="paragraphInputFromUser" rows="30" cols="100"></textarea>
+                <button id="submitNewParagraphButton" type="button">Submit</button>
+            </form>
         </div>
 
     </div>

@@ -41,7 +41,7 @@ function showResult(header, body, showInput) {
         resultPage = $("#resultPage")[0],
         resultHeaderEl = $("#resultHeader")[0],
         resultBodyEl = $("#resultBody")[0],
-        inputEl = $("#paragraphInput")[0];
+        inputEl = $("#formParagraphChange")[0];
 
     resultHeaderEl.innerHTML = header;
     resultBodyEl.innerHTML = body;
@@ -70,20 +70,74 @@ function handleParagraphResponse(paragraph) {
     }
 }
 
+/**
+ * Lookup the indicated paragraph in the SQL database and
+ * subsequently display it on the screen.
+ */
 function lookupParagraph() {
-    var paragraphNumber;
-    paragraphNumber = $("#paragraphNumber")[0].value;
-    $.getJSON("tales.php?paragraph=" + paragraphNumber, handleParagraphResponse);
+    var paragraphNumber = $("#paragraphNumber")[0].value;
+    $.get("tales.php?paragraph=" + paragraphNumber, handleParagraphResponse);
 }
 
+/**
+ * Convert the provided paragraph text to JSON, or return null if invalid.
+ *
+ * @param paragraphText
+ *
+ * Add this (\.\s|\s|\)\s) to enable different types of lists to be entered.
+ */
+function convertParagraphToJSON(paragraphText) {
+    var tablePattern = /\d*\.\s(.*)\s\((\w)\)(\n|$)/g,
+        options, matchObj;
+
+    if (tablePattern.test(paragraphText)) {
+        // Okay, this looks like a table.  Treat it as such.
+        options = [];
+        matchObj = tablePattern.exec(paragraphText);
+        while(matchObj) {
+            options.push( {
+                name: matchObj[1],
+                table: matchObj[2]
+            });
+            matchObj = tablePattern.exec(paragraphText);
+        }
+        return { type: "table", options: options };
+    } else {
+        return null;
+    }
+}
+
+/**
+ * Update the paragraph in the SQL database with the new data provided.
+ */
+function updateParagraph() {
+    var paragraphNumber = $("#paragraphNumber")[0].value,
+        updatedParagraph = $('#paragraphInputFromUser')[0].value,
+        paragraphData;
+
+    paragraphData = convertParagraphToJSON(updatedParagraph);
+
+    if (paragraphData) {
+        $.post("tales.php", { paragraph:paragraphNumber, updateData:paragraphData }, handleParagraphResponse);
+    } else {
+        showResult("There is a problem with your paragraph.", null, true);
+    }
+}
+
+/**
+ * Attach listeners to the various HTML elements.
+ */
 function attachListeners() {
-    $('#formParagraph').keydown(function() {
+    $('#formParagraphRequest').keydown(function() {
         if (event.keyCode == 13) {
             lookupParagraph();
             return false;
         }
     });
+
+    $('#submitNewParagraphButton').click(updateParagraph);
 }
+
 
 function onDocumentReady() {
     attachListeners();
