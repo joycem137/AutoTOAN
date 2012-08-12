@@ -18,7 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $query = sprintf("INSERT INTO paragraphs (number, data) VALUES('%s', '%s')",
             mysql_real_escape_string($paragraphIndex),
             mysql_real_escape_string($escapedJson));
-        $query = "INSERT INTO paragraphs (number, data) VALUES(\"$paragraphIndex\", \"$escapedJson\")";
         mysql_query($query);
     }
 }
