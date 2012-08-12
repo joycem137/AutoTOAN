@@ -70,10 +70,10 @@ function convertParagraphTextToJSON(paragraphText) {
     var tablePattern = /\d*(\.\s|\s|\)\s)(.*)\s\((\w)\)(\n|$)/g,
         options, matchObj;
 
-    if (tablePattern.test(paragraphText)) {
+    matchObj = tablePattern.exec(paragraphText);
+    if (matchObj) {
         // Okay, this looks like a table.  Treat it as such.
         options = [];
-        matchObj = tablePattern.exec(paragraphText);
         while(matchObj) {
             options.push( {
                 name: matchObj[2],
@@ -111,6 +111,9 @@ function showResult(header, body, showInput) {
     inputEl.style.display = showInput ? "block" : "none";
 }
 
+/**
+ * Switch from results display mode to edit mode.
+ */
 function switchToResultEditMode() {
     var
         resultBodyEl = $("#resultBody")[0],
@@ -133,7 +136,7 @@ function handleParagraphResponse(paragraph) {
     var headerText,
         bodyText;
 
-    $('#paragraphNumber')[0].value = "";
+    $('#formParagraphRequest')[0].reset();
 
     if (paragraph.data) {
         cachedData = paragraph.data;
@@ -146,13 +149,59 @@ function handleParagraphResponse(paragraph) {
     }
 }
 
+function parseEncounterName(name) {
+    var pattern = /(\S*)\s(.*)/g,
+        matchObj;
+
+    matchObj = pattern.exec(name);
+    return {
+        adjective:matchObj[1],
+        noun:matchObj[2]
+    };
+}
+
+function selectUserAction(actions, paragraphs) {
+    var numActions = actions.length,
+        actionListEl = $("#actionList")[0],
+        index,
+        htmlToInsert = "";
+
+    $("#mainInputPage")[0].style.display = "none";
+    $("#resultPage")[0].style.display = "none";
+    $("#actionsPage")[0].style.display = "block";
+
+    $("#actionHeader")[0].innerText = "How would you like to react?";
+
+    for (index = 0; index < numActions; index++) {
+        htmlToInsert += "<button id='action" + index + "' type='button'>" + actions[index] + "</button>";
+    }
+
+    actionListEl.innerHTML = htmlToInsert;
+}
+
+function displayEncounterOptions(tableId, encounterName) {
+    var table = reactionTables[tableId.toUpperCase()],
+        actions = table.actions,
+        adjective = parseEncounterName(encounterName).adjective.toLowerCase(),
+        paragraphs = table.adjectives[adjective];
+
+    selectUserAction(actions, paragraphs);
+}
+
 /**
  * Lookup the indicated paragraph in the SQL database and
  * subsequently display it on the screen.
  */
 function lookupParagraph() {
-    var paragraphNumber = $("#paragraphNumber")[0].value;
-    $.get("tales.php?paragraph=" + paragraphNumber, handleParagraphResponse);
+    var paragraphNumber = $("#paragraphNumber")[0].value,
+        tableId = $("#tableId")[0].value,
+        encounterName = $("#encounterName")[0].value;
+
+    if (paragraphNumber) {
+        $.get("tales.php?paragraph=" + paragraphNumber, handleParagraphResponse);
+    } else if (tableId) {
+        displayEncounterOptions(tableId, encounterName);
+    }
 }
 
 /**
@@ -183,20 +232,23 @@ function attachListeners() {
         }
     });
 
-    $('#formParagraphRequest').keydown(function() {
-        if (event.keyCode == 13) {
-            updateParagraph();
-            return false;
-        }
-    });
-
     $('#submitNewParagraphButton').click(updateParagraph);
 
     $('#resultBody').click(switchToResultEditMode);
 }
 
+/**
+ * Load the reaction tables from the associated json file
+ * and place them into a global variable.
+ */
+function loadReactionTables() {
+    $.getJSON("reactions.json", function(json) {
+        reactionTables = json;
+    });
+}
 
 function onDocumentReady() {
+    loadReactionTables();
     attachListeners();
 }
 

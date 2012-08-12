@@ -222,6 +222,14 @@ td { vertical-align: top; }
     display: block;
 }
 
+#actionsPage {
+    display: none;
+}
+
+#resultPage {
+    display: none;
+}
+
 #resultInformation {
     display: none;
 }
