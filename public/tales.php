@@ -14,10 +14,9 @@ $paragraphIndex=$_REQUEST['paragraph'];
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $paragraphDataUpdate=json_encode($_POST['updateData']);
     if ($paragraphDataUpdate != null) {
-        $escapedJson = mysql_real_escape_string($paragraphDataUpdate);
         $query = sprintf("INSERT INTO paragraphs (number, data) VALUES('%s', '%s')",
             mysql_real_escape_string($paragraphIndex),
-            mysql_real_escape_string($escapedJson));
+            mysql_real_escape_string($paragraphDataUpdate));
         mysql_query($query);
     }
 }
