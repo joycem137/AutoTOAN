@@ -84,10 +84,10 @@ function lookupParagraph() {
  *
  * @param paragraphText
  *
- * Add this (\.\s|\s|\)\s) to enable different types of lists to be entered.
+ * Add this  to enable different types of lists to be entered.
  */
 function convertParagraphToJSON(paragraphText) {
-    var tablePattern = /\d*\.\s(.*)\s\((\w)\)(\n|$)/g,
+    var tablePattern = /\d*(\.\s|\s|\)\s)(.*)\s\((\w)\)(\n|$)/g,
         options, matchObj;
 
     if (tablePattern.test(paragraphText)) {
@@ -96,8 +96,8 @@ function convertParagraphToJSON(paragraphText) {
         matchObj = tablePattern.exec(paragraphText);
         while(matchObj) {
             options.push( {
-                name: matchObj[1],
-                table: matchObj[2]
+                name: matchObj[2],
+                table: matchObj[3]
             });
             matchObj = tablePattern.exec(paragraphText);
         }
