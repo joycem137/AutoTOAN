@@ -15,13 +15,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $paragraphDataUpdate=json_encode($_POST['updateData']);
     if ($paragraphDataUpdate != null) {
         $escapedJson = mysql_real_escape_string($paragraphDataUpdate);
+        $query = sprintf("INSERT INTO paragraphs (number, data) VALUES('%s', '%s')",
+            mysql_real_escape_string($paragraphIndex),
+            mysql_real_escape_string($escapedJson));
         $query = "INSERT INTO paragraphs (number, data) VALUES(\"$paragraphIndex\", \"$escapedJson\")";
         mysql_query($query);
     }
 }
 
 // Now retrieve the results.
-$query = "SELECT * FROM paragraphs WHERE `number`=$paragraphIndex";
+$query = sprintf("SELECT * FROM paragraphs WHERE `number`='%s'",
+    mysql_real_escape_string($paragraphIndex));
+
 $result = mysql_query($query);
 $myRow = mysql_fetch_assoc($result);
 
