@@ -132,6 +132,9 @@ function switchToResultEditMode() {
 function handleParagraphResponse(paragraph) {
     var headerText,
         bodyText;
+
+    $('#paragraphNumber')[0].value = "";
+
     if (paragraph.data) {
         cachedData = paragraph.data;
         headerText = "Paragraph " + paragraph.number;
