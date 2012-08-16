@@ -1,7 +1,14 @@
+String.prototype.startsWith = function(prefix) {
+    return this.indexOf(prefix) === 0;
+};
+
+String.prototype.endsWith = function(suffix) {
+    return this.match(suffix+"$") == suffix;
+};
+
 util = {};
 
 util.ParagraphConverters = {
-
     /**
      * Provides a list of converter functions for individual types
      * for simple lookup.
@@ -122,6 +129,22 @@ util.parseEncounterName = function(name) {
     };
 };
 
+/**
+ * Roll the indicated number of d6s
+ * @param howMany
+ */
+util.rollAD6 = function(howMany) {
+    var diceRolled,
+        result = 0,
+        howMany = howMany || 1;
+
+    for ( diceRolled = 0; diceRolled < howMany; diceRolled++) {
+        result += Math.floor(Math.random() * 6) + 1;
+    }
+
+    return result;
+};
+
 // Create the model namespace.
 model = {};
 
@@ -130,11 +153,18 @@ model.reactionTables = {
      * Load the reaction tables from the associated json file
      */
     load: function() {
+        var self = this;
         $.getJSON("reactions.json", function(json) {
-            this._reactionTables = json;
+            self._reactionTables = json;
         });
     },
 
+    /**
+     * Return the indicated reaction table, if it has been loaded.
+     *
+     * @param tableId
+     * @return {*}
+     */
     get: function(tableId) {
         if (this._reactionTables) {
             return this._reactionTables[tableId];
@@ -142,6 +172,27 @@ model.reactionTables = {
             this.load();
             return null;
         }
+    },
+
+    /**
+     * Find a matching adjective from the list of all adjectives,
+     * or if a table is provided, just from this table.
+     *
+     * @param encounterName
+     * @param table
+     */
+    findAdjective: function(encounterName, table) {
+        var adjectiveObject = table.adjectives,
+            key,
+            lowercaseEncounterName = encounterName.toLowerCase();
+
+        for (key in adjectiveObject) {
+            if (lowercaseEncounterName.startsWith(key)) {
+                return key;
+            }
+        }
+
+        return null;
     }
 };
 
@@ -213,9 +264,11 @@ controller.ActionsPage = function(paragraphModel, parentController) {
     this._parentController = parentController;
 
     this._pageElement = $("#actionsPage")[0];
+    this._actionHeader = $("#actionHeader")[0];
+    this._actionList = $("#actionList")[0];
 };
 
-controller.ActionsPage.protoype = {
+controller.ActionsPage.prototype = {
     show: function() {
         this._pageElement.style.display = "block";
     },
@@ -224,36 +277,57 @@ controller.ActionsPage.protoype = {
         this._pageElement.style.display = "none";
     },
 
-    _selectUserAction: function(actions, paragraphs) {
-        var numActions = actions.length,
-            actionListEl = $("#actionList")[0],
-            index,
-            htmlToInsert = "";
+    displayEncounterOptions: function(tableId, encounterName) {
+        var table, actions, adjective, paragraphs;
 
-        $("#mainInputPage")[0].style.display = "none";
-        $("#resultPage")[0].style.display = "none";
-        $("#actionsPage")[0].style.display = "block";
+        // Retrieve the list of actions from our particular reactoin table.
+        table = model.reactionTables.get(tableId.toUpperCase());
+        actions = table.actions;
 
-        $("#actionHeader")[0].innerText = "How would you like to react?";
+        // Look up the paragraphs associated with this encounter
+        adjective = model.reactionTables.findAdjective(encounterName, table);
+        paragraphs = table.adjectives[adjective];
 
-        for (index = 0; index < numActions; index++) {
-            htmlToInsert += "<button id='action" + index + "' type='button'>" + actions[index] + "</button>";
-        }
-
-        actionListEl.innerHTML = htmlToInsert;
+        this._showUserActions(actions, paragraphs, encounterName);
     },
 
-    displayEncounterOptions: function(tableId, encounterName) {
-        var table = model.reactionTables.get(tableId.toUpperCase()),
-            actions = table.actions,
-            adjective = util.parseEncounterName(encounterName).adjective.toLowerCase(),
-            paragraphs = table.adjectives[adjective];
+    _clearActionList: function() {
+        while (this._actionList.hasChildNodes()) {
+            this._actionList.removeChild(this._actionList.firstChild);
+        }
+    },
 
-        this._selectUserAction(actions, paragraphs);
+    _showUserActions: function(actions, paragraphs, encounterName) {
+        var numActions = actions.length,
+            paragraph,
+            index,
+            newButton;
+
+        this._clearActionList();
+
+        for (index = 0; index < numActions; index++) {
+            paragraph = paragraphs[index];
+            if (paragraph > 0) {
+                //Create an input type dynamically.
+                newButton = document.createElement("button");
+
+                //Assign different attributes to the element.
+                newButton.setAttribute("type", "button");
+                newButton.setAttribute("id", "action" + index);
+
+                newButton.innerText = actions[index];
+
+                //Append the element in page (in span).
+                this._actionList.appendChild(newButton);
+            }
+        }
+
+        this._actionHeader.innerHTML = "You have encountered <B>" +
+            encounterName + "</B>!<BR>How will you to react?";
     }
 };
 
-controller.ResultPage = function(paragraphModel, parentController) {
+controller.ParagraphDisplayPage = function(paragraphModel, parentController) {
     this._model = paragraphModel;
     this._parentController = parentController;
 
@@ -268,7 +342,7 @@ controller.ResultPage = function(paragraphModel, parentController) {
     $('#submitNewParagraphButton').click(this._submitNewParagraph.bind(this));
 };
 
-controller.ResultPage.prototype = {
+controller.ParagraphDisplayPage.prototype = {
     show: function() {
         this._pageElement.style.display = "block";
     },
@@ -393,17 +467,18 @@ controller.MainInputPage.prototype = {
         var paragraphNumber = this._paragraphNumberEl.value,
             tableId = this._tableIdEl.value,
             encounterName = this._encounterNameEl.value,
-            bonusRoll = this._bonusRollEl.value,
+            bonusRollValue = this._bonusRollEl.value,
+            bonusRoll = bonusRollValue ? parseInt(bonusRollValue, 10) : 0,
             self = this;
 
         this.reset();
 
         if (paragraphNumber) {
             this._model.getParagraph(paragraphNumber, function(paragraph) {
-                self._parentController.showParagraph(paragraph, encounterName, bonusRoll);
+                self._parentController.handlePararaph(paragraph, encounterName, bonusRoll);
             });
         } else if (tableId) {
-            this._parentController.showTable(tableId, encounterName, bonusRoll);
+            this._parentController.handleReactionTable(tableId, encounterName);
         }
     }
 };
@@ -419,7 +494,7 @@ controller.mainController = {
     },
 
     _buildPages: function() {
-        this._resultPage = new controller.ResultPage(this._paragraphModel, this);
+        this._paragraphDisplayPage = new controller.ParagraphDisplayPage(this._paragraphModel, this);
         this._actionsPage = new controller.ActionsPage(this._paragraphModel, this);
         this._mainInputPage = new controller.MainInputPage(this._paragraphModel, this);
     },
@@ -433,18 +508,77 @@ controller.mainController = {
         newPage.show();
     },
 
-    showParagraph: function(paragraph, encounterName, bonusRoll) {
+    handlePararaph: function(paragraph, encounterName, bonusRoll) {
         if(paragraph) {
-            this._showPage(this._resultPage);
-            this._resultPage.displayParagraphResults(paragraph, encounterName);
+            if (paragraph.data && paragraph.data.type === "table") {
+                // If the paragraph was a table, select an encounter from it.
+                this._selectEncounterFromTable(paragraph, encounterName, bonusRoll);
+            } else {
+                this.displayParagraph(paragraph, encounterName);
+            }
         } else {
             alert("Error in paragraph loading.");
         }
     },
 
-    showTable: function(tableId, encounterName, bonusRoll) {
+    /**
+     * Handle a reaction table.
+     *
+     * @param tableId The name of the reaction table to display.
+     * @param encounterName The name of the encounter we are reacting to.
+     */
+    handleReactionTable: function(tableId, encounterName) {
         this._showPage(this._actionsPage);
         this._actionsPage.displayEncounterOptions(tableId, encounterName);
+    },
+
+    /**
+     * Displays the indicated paragraph on the screen.
+     *
+     * @param paragraph The paragraph to display
+     * @param encounterName The name of the encounter to display
+     */
+    displayParagraph: function(paragraph, encounterName) {
+        this._showPage(this._paragraphDisplayPage);
+        this._paragraphDisplayPage.displayParagraphResults(paragraph, encounterName);
+    },
+
+    /**
+     * Selected an encounter from an encounter table.
+     *
+     * @param paragraph The encounter table from the book
+     * @param encounterName Any additional encounter name information we've been provided.
+     *                      For some encounter tables, this is just the noun associated
+     *                      with our request.
+     * @param bonusRoll If the player has bonuses due to game mechanics, they are
+     *                  provided here.
+     */
+    _selectEncounterFromTable: function(paragraph, encounterName, bonusRoll) {
+        var tableOptions,
+            roll,
+            selectedOption,
+            newEncounterName,
+            reactionTable;
+
+        if (paragraph && paragraph.data && paragraph.data.type === "table") {
+            tableOptions = paragraph.data.options;
+
+            // Roll a die and lookup our result
+            roll = bonusRoll + util.rollAD6(1);
+            selectedOption = tableOptions[roll - 1];
+
+            // Build our new encounter name
+            newEncounterName = selectedOption.name;
+            if (encounterName) {
+                newEncounterName += " " + encounterName;
+            }
+
+            // Select either the table wide reaction table, or the specific one for this option.
+            reactionTable = paragraph.data.table || selectedOption.table;
+
+            // Now show the table!
+            this.handleReactionTable(reactionTable, newEncounterName);
+        }
     }
 };
 
