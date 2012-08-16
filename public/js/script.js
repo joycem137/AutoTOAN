@@ -105,6 +105,12 @@ util.ParagraphConverters = {
     }
 };
 
+/**
+ * Given a full name of an encounter, determine which part is the
+ * adjective, and which part is the noun.
+ * @param name
+ * @return {Object}
+ */
 util.parseEncounterName = function(name) {
     var pattern = /(\S*)\s(.*)/g,
         matchObj;
@@ -116,158 +122,332 @@ util.parseEncounterName = function(name) {
     };
 };
 
-/**
- * Display a given paragraph result on the screen.
- *
- * @param header
- * @param body
- * @param showInput
- */
-function showResult(header, body, showInput) {
-    var
-        resultPage = $("#resultPage")[0],
-        resultHeaderEl = $("#resultHeader")[0],
-        resultBodyEl = $("#resultBody")[0],
-        inputEl = $("#formParagraphChange")[0]
-    ;
+// Create the model namespace.
+model = {};
 
-    resultHeaderEl.innerHTML = header;
-    resultBodyEl.innerHTML = body;
+model.reactionTables = {
+    /**
+     * Load the reaction tables from the associated json file
+     */
+    load: function() {
+        $.getJSON("reactions.json", function(json) {
+            this._reactionTables = json;
+        });
+    },
 
-    resultPage.style.display = "block";
-    resultHeaderEl.style.display = header ? "block" : "none";
-    resultBodyEl.style.display = body ? "block" : "none";
-    inputEl.style.display = showInput ? "block" : "none";
-}
-
-/**
- * Switch from results display mode to edit mode.
- */
-function switchToResultEditMode() {
-    var
-        resultBodyEl = $("#resultBody")[0],
-        inputEl = $("#formParagraphChange")[0],
-        textAreaEl = $("#paragraphInputFromUser")[0]
-        ;
-
-    textAreaEl.value = util.ParagraphConverters.convert(cachedData, "text");
-
-    resultBodyEl.style.display = "none";
-    inputEl.style.display = "block";
-}
-
-/**
- * Process the response for a given paragraph.
- *
- * @param paragraph
- */
-function handleParagraphResponse(paragraph) {
-    var headerText,
-        bodyText;
-
-    $('#formParagraphRequest')[0].reset();
-
-    if (paragraph.data) {
-        cachedData = paragraph.data;
-        headerText = "Paragraph " + paragraph.number;
-        bodyText = util.ParagraphConverters.convert(paragraph.data, "html");
-        showResult(headerText, bodyText, false);
-    } else {
-        headerText = "Paragraph " + paragraph.number + " not found.  You may enter a paragraph below."
-        showResult(headerText, null, true);
+    get: function(tableId) {
+        if (this._reactionTables) {
+            return this._reactionTables[tableId];
+        } else {
+            this.load();
+            return null;
+        }
     }
-}
+};
 
-function selectUserAction(actions, paragraphs) {
-    var numActions = actions.length,
-        actionListEl = $("#actionList")[0],
-        index,
-        htmlToInsert = "";
+model.ParagraphModel = function() {
+    this._paragraphList = {};
+};
 
-    $("#mainInputPage")[0].style.display = "none";
-    $("#resultPage")[0].style.display = "none";
-    $("#actionsPage")[0].style.display = "block";
+model.ParagraphModel.prototype = {
 
-    $("#actionHeader")[0].innerText = "How would you like to react?";
+    /**
+     * Retrieve the indicated paragraph and call the callback when complete.
+     *
+     * @param paragraphNumber
+     * @param callback
+     * @param forceReload When true, forces the model to reload the paragraph
+     *                    from the server.
+     */
+    getParagraph: function(paragraphNumber, callback, forceReload) {
+        var paragraph = this._paragraphList[paragraphNumber];
+        if (forceReload || !paragraph) {
+            this._loadParagraph(paragraphNumber, callback);
+        } else {
+            callback(paragraph);
+        }
+    },
 
-    for (index = 0; index < numActions; index++) {
-        htmlToInsert += "<button id='action" + index + "' type='button'>" + actions[index] + "</button>";
+    /**
+     * Update the paragraph in the SQL database with the new data provided.
+     */
+    updateParagraph: function (paragraphNumber, paragraphData, callback) {
+        var self = this;
+
+        if (paragraphData && paragraphNumber > 0) {
+            $.post("tales.php", { paragraph:paragraphNumber, updateData:paragraphData },
+                function(paragraph) {
+                    if(paragraph) {
+                        self._paragraphList[paragraph.number] = paragraph;
+                    }
+                    callback(paragraph);
+                }
+            );
+        } else {
+            callback(null);
+        }
+    },
+
+    /**
+     * Load the indicated paragraph and call the callback when complete.
+     * @param paragraphNumber
+     * @param callback
+     */
+    _loadParagraph: function(paragraphNumber, callback) {
+        var self = this;
+
+        $.get("tales.php?paragraph=" + paragraphNumber, function (paragraph) {
+            if (paragraph) {
+                self._paragraphList[paragraph.number] = paragraph;
+            }
+            callback(paragraph);
+        });
     }
+};
 
-    actionListEl.innerHTML = htmlToInsert;
-}
+// Start the controller namespace.
+controller = {};
 
-function displayEncounterOptions(tableId, encounterName) {
-    var table = reactionTables[tableId.toUpperCase()],
-        actions = table.actions,
-        adjective = util.parseEncounterName(encounterName).adjective.toLowerCase(),
-        paragraphs = table.adjectives[adjective];
+controller.ActionsPage = function(paragraphModel, parentController) {
+    this._model = paragraphModel;
+    this._parentController = parentController;
 
-    selectUserAction(actions, paragraphs);
-}
+    this._pageElement = $("#actionsPage")[0];
+};
 
-/**
- * Lookup the indicated paragraph in the SQL database and
- * subsequently display it on the screen.
- */
-function lookupParagraph() {
-    var paragraphNumber = $("#paragraphNumber")[0].value,
-        tableId = $("#tableId")[0].value,
-        encounterName = $("#encounterName")[0].value;
+controller.ActionsPage.protoype = {
+    show: function() {
+        this._pageElement.style.display = "block";
+    },
 
-    if (paragraphNumber) {
-        $.get("tales.php?paragraph=" + paragraphNumber, handleParagraphResponse);
-    } else if (tableId) {
-        displayEncounterOptions(tableId, encounterName);
+    hide: function() {
+        this._pageElement.style.display = "none";
+    },
+
+    _selectUserAction: function(actions, paragraphs) {
+        var numActions = actions.length,
+            actionListEl = $("#actionList")[0],
+            index,
+            htmlToInsert = "";
+
+        $("#mainInputPage")[0].style.display = "none";
+        $("#resultPage")[0].style.display = "none";
+        $("#actionsPage")[0].style.display = "block";
+
+        $("#actionHeader")[0].innerText = "How would you like to react?";
+
+        for (index = 0; index < numActions; index++) {
+            htmlToInsert += "<button id='action" + index + "' type='button'>" + actions[index] + "</button>";
+        }
+
+        actionListEl.innerHTML = htmlToInsert;
+    },
+
+    displayEncounterOptions: function(tableId, encounterName) {
+        var table = model.reactionTables.get(tableId.toUpperCase()),
+            actions = table.actions,
+            adjective = util.parseEncounterName(encounterName).adjective.toLowerCase(),
+            paragraphs = table.adjectives[adjective];
+
+        this._selectUserAction(actions, paragraphs);
     }
-}
+};
 
-/**
- * Update the paragraph in the SQL database with the new data provided.
- */
-function updateParagraph() {
-    var paragraphNumber = $("#paragraphNumber")[0].value,
-        updatedParagraph = $('#paragraphInputFromUser')[0].value,
-        paragraphData;
+controller.ResultPage = function(paragraphModel, parentController) {
+    this._model = paragraphModel;
+    this._parentController = parentController;
 
-    paragraphData = util.ParagraphConverters.convert(updatedParagraph);
+    this._pageElement = $("#resultPage")[0];
+    this._resultBodyEl = $("#resultBody")[0];
+    this._inputEl = $("#formParagraphChange")[0];
+    this._textAreaEl = $("#paragraphInputFromUser")[0];
+    this._paragraphInputEl = $('#paragraphInputFromUser')[0];
+    this._resultHeaderEl = $("#resultHeader")[0];
 
-    if (paragraphData) {
-        $.post("tales.php", { paragraph:paragraphNumber, updateData:paragraphData }, handleParagraphResponse);
-    } else {
-        showResult("There is a problem with your paragraph.", null, true);
+    $("#resultBody").click(this._switchToResultEditMode.bind(this));
+    $('#submitNewParagraphButton').click(this._submitNewParagraph.bind(this));
+};
+
+controller.ResultPage.prototype = {
+    show: function() {
+        this._pageElement.style.display = "block";
+    },
+
+    hide: function() {
+        this._pageElement.style.display = "none";
+    },
+
+    /**
+     * Process the response for a given paragraph.
+     *
+     * @param paragraph
+     */
+    displayParagraphResults: function(paragraph) {
+        var headerText,
+            bodyText;
+
+        this._paragraphNumber = paragraph.number;
+
+        if (paragraph.data) {
+            headerText = "Paragraph " + paragraph.number;
+            bodyText = util.ParagraphConverters.convert(paragraph.data, "html");
+            this._showResult(headerText, bodyText, false);
+        } else {
+            headerText = "Paragraph " + paragraph.number + " not found.  You may enter a paragraph below."
+            this._showResult(headerText, "", true);
+        }
+    },
+
+    _submitNewParagraph: function() {
+        var updatedParagraph = this._paragraphInputEl.value,
+            paragraphData,
+            self = this;
+
+        paragraphData = util.ParagraphConverters.convert(updatedParagraph);
+
+        if (paragraphData) {
+            this._model.updateParagraph(this._paragraphNumber, paragraphData, function(paragraph) {
+                self._parentController.showParagraph(paragraph)
+            });
+        } else {
+            this._resultHeaderEl.innerHTML = "There is a problem with your paragraph.";
+        }
+    },
+
+    /**
+     * Display a given paragraph result on the screen.
+     *
+     * @param header
+     * @param body
+     * @param showInput
+     */
+    _showResult: function(header, body, showInput) {
+        if (header) {
+            this._resultHeaderEl.innerHTML = header;
+        }
+
+        if (showInput) {
+            this._textAreaEl.value = body;
+        } else {
+            this._resultBodyEl.innerHTML = body;
+        }
+
+        this._resultHeaderEl.style.display = header ? "block" : "none";
+        this._resultBodyEl.style.display = !showInput ? "block" : "none";
+        this._inputEl.style.display = showInput ? "block" : "none";
+    },
+
+    /**
+     * Switch from results display mode to edit mode.
+     */
+    _switchToResultEditMode: function() {
+        var self = this;
+        this._model.getParagraph(this._paragraphNumber, function(paragraph) {
+            var headerText = "Paragraph " + paragraph.number + " now open for editing.",
+                bodyText = util.ParagraphConverters.convert(paragraph.data, "text");
+
+            self._showResult(headerText, bodyText, true);
+        });
     }
-}
+};
 
-/**
- * Attach listeners to the various HTML elements.
- */
-function attachListeners() {
-    $('#formParagraphRequest').keydown(function() {
+controller.MainInputPage = function(paragraphModel, parentController) {
+    var self = this;
+    this._model = paragraphModel;
+    this._parentController = parentController;
+
+    this._pageElement = $("#mainInputPage")[0];
+    this._inputFormEl = $("#formParagraphRequest")[0];
+    this._paragraphNumberEl = $("#paragraphNumber")[0];
+    this._tableIdEl = $("#tableId")[0];
+    this._encounterNameEl = $("#encounterName")[0];
+    this._bonusRollEl = $("#bonusRoll")[0];
+
+    $("#formParagraphRequest").keydown(function() {
         if (event.keyCode == 13) {
-            lookupParagraph();
+            self._lookupParagraph();
             return false;
         }
     });
-
-    $('#submitNewParagraphButton').click(updateParagraph);
-
-    $('#resultBody').click(switchToResultEditMode);
 }
 
-/**
- * Load the reaction tables from the associated json file
- * and place them into a global variable.
- */
-function loadReactionTables() {
-    $.getJSON("reactions.json", function(json) {
-        reactionTables = json;
-    });
-}
+controller.MainInputPage.prototype = {
+    show: function() {
+        this._pageElement.style.display = "block";
+    },
 
-function onDocumentReady() {
-    loadReactionTables();
-    attachListeners();
-}
+    hide: function() {
+        // Don't actually hide.
+        this.reset();
+    },
 
-$(document).ready(onDocumentReady);
+    reset: function() {
+        this._inputFormEl.reset();
+    },
+
+    /**
+     * Lookup the indicated paragraph in the SQL database and
+     * subsequently display it on the screen.
+     */
+    _lookupParagraph: function() {
+        var paragraphNumber = this._paragraphNumberEl.value,
+            tableId = this._tableIdEl.value,
+            encounterName = this._encounterNameEl.value,
+            bonusRoll = this._bonusRollEl.value,
+            self = this;
+
+        this.reset();
+
+        if (paragraphNumber) {
+            this._model.getParagraph(paragraphNumber, function(paragraph) {
+                self._parentController.showParagraph(paragraph, encounterName, bonusRoll);
+            });
+        } else if (tableId) {
+            this._parentController.showTable(tableId, encounterName, bonusRoll);
+        }
+    }
+};
+
+controller.mainController = {
+    onDocumentReady: function() {
+        model.reactionTables.load();
+        this._paragraphModel = new model.ParagraphModel();
+
+        this._buildPages();
+
+        this._showPage(this._mainInputPage);
+    },
+
+    _buildPages: function() {
+        this._resultPage = new controller.ResultPage(this._paragraphModel, this);
+        this._actionsPage = new controller.ActionsPage(this._paragraphModel, this);
+        this._mainInputPage = new controller.MainInputPage(this._paragraphModel, this);
+    },
+
+    _showPage: function(newPage) {
+        if (this._currentPage) {
+            this._currentPage.hide();
+        }
+
+        this._currentPage = newPage;
+        newPage.show();
+    },
+
+    showParagraph: function(paragraph, encounterName, bonusRoll) {
+        if(paragraph) {
+            this._showPage(this._resultPage);
+            this._resultPage.displayParagraphResults(paragraph, encounterName);
+        } else {
+            alert("Error in paragraph loading.");
+        }
+    },
+
+    showTable: function(tableId, encounterName, bonusRoll) {
+        this._showPage(this._actionsPage);
+        this._actionsPage.displayEncounterOptions(tableId, encounterName);
+    }
+};
+
+$(document).ready(function() {
+    controller.mainController.onDocumentReady();
+});
