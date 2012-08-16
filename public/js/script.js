@@ -145,6 +145,13 @@ util.rollAD6 = function(howMany) {
     return result;
 };
 
+/**
+ * Rolls the destiny die.
+ */
+util.rollDestinyDie = function() {
+    return Math.floor(Math.random() * 3) - 1;
+};
+
 // Create the model namespace.
 model = {};
 
@@ -263,18 +270,18 @@ controller.ActionsPage = function(paragraphModel, parentController) {
     this._model = paragraphModel;
     this._parentController = parentController;
 
-    this._pageElement = $("#actionsPage")[0];
-    this._actionHeader = $("#actionHeader")[0];
-    this._actionList = $("#actionList")[0];
+    this._pageElement = $("#actionsPage");
+    this._actionHeader = $("#actionHeader");
+    this._actionList = $("#actionList");
 };
 
 controller.ActionsPage.prototype = {
     show: function() {
-        this._pageElement.style.display = "block";
+        this._pageElement.css("display", "block");
     },
 
     hide: function() {
-        this._pageElement.style.display = "none";
+        this._pageElement.css("display", "none");
     },
 
     displayEncounterOptions: function(tableId, encounterName) {
@@ -288,13 +295,17 @@ controller.ActionsPage.prototype = {
         adjective = model.reactionTables.findAdjective(encounterName, table);
         paragraphs = table.adjectives[adjective];
 
+        this._currentEncounter = {
+            name: encounterName,
+            actions: actions,
+            paragraphs: paragraphs
+        };
+
         this._showUserActions(actions, paragraphs, encounterName);
     },
 
     _clearActionList: function() {
-        while (this._actionList.hasChildNodes()) {
-            this._actionList.removeChild(this._actionList.firstChild);
-        }
+        this._actionList.empty();
     },
 
     _showUserActions: function(actions, paragraphs, encounterName) {
@@ -308,22 +319,36 @@ controller.ActionsPage.prototype = {
         for (index = 0; index < numActions; index++) {
             paragraph = paragraphs[index];
             if (paragraph > 0) {
-                //Create an input type dynamically.
-                newButton = document.createElement("button");
+                // Create a new button.
+                newButton = $(document.createElement("button"));
+                newButton.attr("type", "button");
+                newButton.attr("id", "action" + index);
 
-                //Assign different attributes to the element.
-                newButton.setAttribute("type", "button");
-                newButton.setAttribute("id", "action" + index);
+                newButton.text(actions[index]);
 
-                newButton.innerText = actions[index];
+                newButton.click(function(index) {
+                    this._selectAction(index);
+                }.bind(this, index));
 
                 //Append the element in page (in span).
-                this._actionList.appendChild(newButton);
+                this._actionList.append(newButton);
             }
         }
 
-        this._actionHeader.innerHTML = "You have encountered <B>" +
-            encounterName + "</B>!<BR>How will you to react?";
+        this._actionHeader.html("You have encountered <B>" +
+            encounterName + "</B>!<BR>How will you to react?");
+    },
+
+    _selectAction: function(index) {
+        var currentEncounter = this._currentEncounter,
+            paragraphNumber,
+            self = this;
+
+        paragraphNumber = currentEncounter.paragraphs[index] + util.rollDestinyDie();
+            
+        this._model.getParagraph(paragraphNumber, function(paragraph) {
+            self._parentController.handlePararaph(paragraph, currentEncounter.name, 0);
+        });
     }
 };
 
@@ -331,7 +356,7 @@ controller.ParagraphDisplayPage = function(paragraphModel, parentController) {
     this._model = paragraphModel;
     this._parentController = parentController;
 
-    this._pageElement = $("#resultPage")[0];
+    this._pageElement = $("#paragraphDisplayPage");
     this._resultBodyEl = $("#resultBody")[0];
     this._inputEl = $("#formParagraphChange")[0];
     this._textAreaEl = $("#paragraphInputFromUser")[0];
@@ -344,11 +369,11 @@ controller.ParagraphDisplayPage = function(paragraphModel, parentController) {
 
 controller.ParagraphDisplayPage.prototype = {
     show: function() {
-        this._pageElement.style.display = "block";
+        this._pageElement.css("display", "block");
     },
 
     hide: function() {
-        this._pageElement.style.display = "none";
+        this._pageElement.css("display", "none");
     },
 
     /**
@@ -430,24 +455,24 @@ controller.MainInputPage = function(paragraphModel, parentController) {
     this._model = paragraphModel;
     this._parentController = parentController;
 
-    this._pageElement = $("#mainInputPage")[0];
-    this._inputFormEl = $("#formParagraphRequest")[0];
+    this._pageElement = $("#mainInputPage");
+    this._inputFormEl = $("#formParagraphRequest");
     this._paragraphNumberEl = $("#paragraphNumber")[0];
     this._tableIdEl = $("#tableId")[0];
     this._encounterNameEl = $("#encounterName")[0];
     this._bonusRollEl = $("#bonusRoll")[0];
 
-    $("#formParagraphRequest").keydown(function() {
+    this._inputFormEl.keydown(function() {
         if (event.keyCode == 13) {
             self._lookupParagraph();
             return false;
         }
     });
-}
+};
 
 controller.MainInputPage.prototype = {
     show: function() {
-        this._pageElement.style.display = "block";
+        this._pageElement.css("display", "block");
     },
 
     hide: function() {
@@ -456,7 +481,9 @@ controller.MainInputPage.prototype = {
     },
 
     reset: function() {
-        this._inputFormEl.reset();
+        this._paragraphNumberEl.value = "";
+        this._tableIdEl.value = "";
+        this._encounterNameEl.value = "";
     },
 
     /**
