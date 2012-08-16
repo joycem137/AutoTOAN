@@ -52,24 +52,42 @@ util.ParagraphConverters = {
      * Add this  to enable different types of lists to be entered.
      */
     _convertTextToJson:function (paragraphText) {
-        var tablePattern = /\d*(\.\s|\s|\)\s)(.*)\s\((\w)\)(\n|$)/g,
+        var fullEncounterTablePattern = /\d*(\.\s|\s|\)\s)(.*)\s\((\w)\)(\n|$)/g,
+            adjectiveOnlyTablePattern = /\d+(\.\s|\s|\)\s)(.*)(\n|$)/g,
+            matrixPatternForTable = /matrix[\:\)]?\s(\w)/,
             options, matchObj;
 
-        matchObj = tablePattern.exec(paragraphText);
-        if (matchObj) {
-            // Okay, this looks like a table.  Treat it as such.
-            options = [];
-            while (matchObj) {
-                options.push({
-                    name:matchObj[2],
-                    table:matchObj[3]
-                });
-                matchObj = tablePattern.exec(paragraphText);
-            }
+        if (fullEncounterTablePattern.test(paragraphText)) {
+            options = this._generateTable(paragraphText, fullEncounterTablePattern);
             return { type:"table", options:options };
+        } else if (adjectiveOnlyTablePattern.test(paragraphText)) {
+            options = this._generateTable(paragraphText, adjectiveOnlyTablePattern);
+            matchObj = matrixPatternForTable.exec(paragraphText);
+            return { type:"table", matrix: matchObj[1], options:options };
         } else {
             return null;
         }
+    },
+
+    _generateTable: function(paragraphText, regex) {
+        var matchObj, options = [], newOption;
+
+        // Reset the regex.
+        regex.lastIndex = 0;
+
+        matchObj = regex.exec(paragraphText);
+        while (matchObj) {
+            newOption = {
+                name:matchObj[2]
+            };
+            if (matchObj[3] && matchObj[3] !== "\n") {
+                newOption.matrix = matchObj[3];
+            }
+            options.push(newOption);
+            matchObj = regex.exec(paragraphText);
+        }
+
+        return options;
     },
 
     /**
@@ -85,7 +103,7 @@ util.ParagraphConverters = {
             resultText = "";
         for (index = 0; index < numOptions; index++) {
             option = tableOptions[index];
-            resultText += (index + 1) + ". " + option.name + " (" + option.table + ")\n";
+            resultText += (index + 1) + ". " + option.name + " (" + option.matrix + ")\n";
         }
 
         return resultText;
@@ -104,7 +122,7 @@ util.ParagraphConverters = {
             resultHTML = "<ol>";
         for (index = 0; index < numOptions; index++) {
             option = tableOptions[index];
-            resultHTML += "<li>" + option.name + " (" + option.table + ")" + "</li>";
+            resultHTML += "<li>" + option.name + " (" + option.matrix + ")" + "</li>";
         }
 
         resultHTML += "</ol>";
@@ -406,7 +424,7 @@ controller.ParagraphDisplayPage.prototype = {
 
         if (paragraphData) {
             this._model.updateParagraph(this._paragraphNumber, paragraphData, function(paragraph) {
-                self._parentController.showParagraph(paragraph)
+                self._parentController.handlePararaph(paragraph)
             });
         } else {
             this._resultHeaderEl.innerHTML = "There is a problem with your paragraph.";
@@ -601,7 +619,7 @@ controller.mainController = {
             }
 
             // Select either the table wide reaction table, or the specific one for this option.
-            reactionTable = paragraph.data.table || selectedOption.table;
+            reactionTable = paragraph.data.matrix || selectedOption.matrix;
 
             // Now show the table!
             this.handleReactionTable(reactionTable, newEncounterName);
