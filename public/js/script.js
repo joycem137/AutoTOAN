@@ -403,7 +403,11 @@ controller.ParagraphDisplayPage.prototype = {
         var headerText,
             bodyText;
 
-        this._paragraphNumber = paragraph.number;
+        this._currentParagraph = {
+            number: paragraph.number,
+            data: paragraph.data,
+            name: encounterName
+        };
 
         if (paragraph.data) {
             headerText = "Paragraph " + paragraph.number;
@@ -417,14 +421,15 @@ controller.ParagraphDisplayPage.prototype = {
 
     _submitNewParagraph: function() {
         var updatedParagraph = this._paragraphInputEl.value,
+            paragraphNumber = this._currentParagraph.number,
             paragraphData,
             self = this;
 
         paragraphData = util.ParagraphConverters.convert(updatedParagraph);
 
         if (paragraphData) {
-            this._model.updateParagraph(this._paragraphNumber, paragraphData, function(paragraph) {
-                self._parentController.handlePararaph(paragraph)
+            this._model.updateParagraph(paragraphNumber, paragraphData, function(paragraph) {
+                self._parentController.handlePararaph(paragraph, self._currentParagraph.name)
             });
         } else {
             this._resultHeaderEl.innerHTML = "There is a problem with your paragraph.";
@@ -458,8 +463,9 @@ controller.ParagraphDisplayPage.prototype = {
      * Switch from results display mode to edit mode.
      */
     _switchToResultEditMode: function() {
-        var self = this;
-        this._model.getParagraph(this._paragraphNumber, function(paragraph) {
+        var self = this,
+            paragraphNumber = this._currentParagraph.number;
+        this._model.getParagraph(paragraphNumber, function(paragraph) {
             var headerText = "Paragraph " + paragraph.number + " now open for editing.",
                 bodyText = util.ParagraphConverters.convert(paragraph.data, "text");
 
@@ -504,6 +510,11 @@ controller.MainInputPage.prototype = {
         this._encounterNameEl.value = "";
     },
 
+    getBonusRoll: function() {
+        var bonusRollValue = this._bonusRollEl.value;
+        return bonusRollValue ? parseInt(bonusRollValue, 10) : 0
+    },
+
     /**
      * Lookup the indicated paragraph in the SQL database and
      * subsequently display it on the screen.
@@ -512,15 +523,13 @@ controller.MainInputPage.prototype = {
         var paragraphNumber = this._paragraphNumberEl.value,
             tableId = this._tableIdEl.value,
             encounterName = this._encounterNameEl.value,
-            bonusRollValue = this._bonusRollEl.value,
-            bonusRoll = bonusRollValue ? parseInt(bonusRollValue, 10) : 0,
             self = this;
 
         this.reset();
 
         if (paragraphNumber) {
             this._model.getParagraph(paragraphNumber, function(paragraph) {
-                self._parentController.handlePararaph(paragraph, encounterName, bonusRoll);
+                self._parentController.handlePararaph(paragraph, encounterName);
             });
         } else if (tableId) {
             this._parentController.handleReactionTable(tableId, encounterName);
@@ -553,7 +562,8 @@ controller.mainController = {
         newPage.show();
     },
 
-    handlePararaph: function(paragraph, encounterName, bonusRoll) {
+    handlePararaph: function(paragraph, encounterName) {
+        var bonusRoll = this._mainInputPage.getBonusRoll();
         if(paragraph) {
             if (paragraph.data && paragraph.data.type === "table") {
                 // If the paragraph was a table, select an encounter from it.
