@@ -399,7 +399,7 @@ controller.ParagraphDisplayPage.prototype = {
      *
      * @param paragraph
      */
-    displayParagraphResults: function(paragraph) {
+    displayParagraphResults: function(paragraph, encounterName) {
         var headerText,
             bodyText;
 
