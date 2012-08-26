@@ -206,6 +206,8 @@ controller.MainInputPage = function(parentController) {
             return false;
         }
     });
+
+    $("#badlyLostButton").click(this._handleBadlyLostEncounter.bind(this));
 };
 
 controller.MainInputPage.prototype = {
@@ -222,6 +224,31 @@ controller.MainInputPage.prototype = {
         this._paragraphNumberEl.val("");
         this._tableIdEl.val("");
         this._encounterNameEl.val("");
+    },
+
+    _handleBadlyLostEncounter: function() {
+        var
+            locationBonusValue = this._bonusRollEl.val(),
+            locationBonus = locationBonusValue ? parseInt(locationBonusValue, 10) : 0,
+            destinyBonus = parseInt($("input[name=bonus]:checked").val(),10),
+            bonusToRoll = destinyBonus + locationBonus,
+            checkedStatuses = $("input[name=status]:checked"),
+            statusList = [],
+            encounter;
+
+        this.reset();
+
+        // Create the encounter object we're going to be using.
+        encounter = new model.Encounter(null, "G", "Badly Lost", bonusToRoll);
+
+        // Now handle the statuses
+        checkedStatuses.each(function() {
+            statusList.push(this.value);
+        });
+
+        encounter.statusList = statusList;
+
+        this._parentController.startEncounter(encounter);
     },
 
     /**
