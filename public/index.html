@@ -39,14 +39,30 @@
     <div role="main">
 
         <div id="mainInputPage">
-            Begin your selection by choosing either a paragraph number or a table id.
-            If appropriate, enter an encounter name and a bonus to your roll.
+            <h2>Encounter Lookup</h2>
             <form id="formParagraphRequest">
+                <b>Primary Encounter Data</b><br>
                 Paragraph #: <input type="text" id="paragraphNumber"/>
                 Table id: <input type="text" id="tableId"/><br>
                 Encounter Name: <input type="text" id="encounterName"/>
-                Bonus: <input type="text" id="bonusRoll"/>
+                <hr>
+                <b>Enter your Bonus information</b><br>
+                Location Bonus: <input type="text" id="bonusRoll"/><br>
+                Destiny Bonus:
+                <input type="radio" name="bonus" value=0 checked/> None
+                <input type="radio" name="bonus" value=1 /> +1
+                <input type="radio" name="bonus" value=2 /> +2
+                <hr>
+                <b>Statuses:</b><br>
+                <input type="checkbox" name="status" value="accursed" /> Accursed <br>
+                <input type="checkbox" name="status" value="insane" /> Insane <br>
+                <input type="checkbox" name="status" value="respected" /> Respected<br>
+                <input type="checkbox" name="status" value="determined" /> Determined <br>
+                <input type="checkbox" name="status" value="imprisoned" /> Imprisoned<br>
+                <input type="checkbox" name="status" value="lost" /> Lost<br>
+
             </form>
+            <hr>
         </div>
 
         <div id="paragraphDisplayPage">
@@ -59,14 +75,15 @@
         </div>
 
         <div id="actionsPage">
+            <h1>Encounter</h1>
             <div id="actionHeader"></div>
             <div id="actionList"></div>
+            <hr>
         </div>
 
 
-        <BR><BR><BR><BR>
         <div id="infoSidebar">
-            Information about the current encounter:
+            <h2>Encounter Information</h2>
             <ul>
                 <li id="sidebarPhase"></li>
                 <li id="sidebarName"></li>

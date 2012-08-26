@@ -246,6 +246,21 @@ td { vertical-align: top; }
     display: none;
 }
 
+#bonusRoll {
+    width: 30px;
+}
+
+#paragraphNumber {
+    width: 40px;
+}
+
+#tableId {
+    width: 14px;
+}
+
+#encounterName {
+    width: 300px;
+}
 
 
 

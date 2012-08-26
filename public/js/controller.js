@@ -226,8 +226,10 @@ controller.MainInputPage.prototype = {
     _lookupEncounter: function() {
         var paragraphNumber = this._paragraphNumberEl.val(),
             tableId = this._tableIdEl.val(),
-            bonusRollValue = this._bonusRollEl.val(),
-            bonusToRoll = bonusRollValue ? parseInt(bonusRollValue, 10) : 0,
+            locationBonusValue = this._bonusRollEl.val(),
+            locationBonus = locationBonusValue ? parseInt(locationBonusValue, 10) : 0,
+            destinyBonus = parseInt($("input[@name=bonus]:checked").val(),10),
+            bonusToRoll = destinyBonus + locationBonus,
             encounterName = this._encounterNameEl.val(),
             encounter;
 
@@ -268,7 +270,7 @@ controller.SidebarController.prototype = {
         this._matrixEl.html("<B>Matrix ID:</B> " + encounter.tableId);
         this._initialParagraphEl.html("<B>Encounter Table Paragraph:</B> " + encounter.initialParagraph);
         this._bonusEl.html("<B>Encounter Bonus:</B> " + encounter.encounterBonus);
-        this._encounterRollEl.html("<B>Encounter Die Roll:</B> " + encounter.encounterRoll);
+        this._encounterRollEl.html("<B>Encounter Die Roll:</B> " + encounter.dieRollForEncounter);
         this._actionEl.html("<B>Action Selected:</B> " + encounter.actionName);
         if (encounter.centerParagraph) this._centerEl.html("<B>Center Result Paragraph:</B> " + encounter.centerParagraph);
 

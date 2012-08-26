@@ -142,7 +142,7 @@ model.Encounter.prototype = {
         return this.encounterRoll;
     },
 
-    /**
+    /** v
      * The final result provided by the encounter roll plus the bonuses that are applied
      * to it.
      *
@@ -151,7 +151,7 @@ model.Encounter.prototype = {
         if (!this.dieRollForEncounter) {
             return this.rollForEncounter();
         } else {
-            return this.dieRollForEncounter + this.encounterBonus;
+            return Math.min(this.dieRollForEncounter + this.encounterBonus, 12);
         }
     },
 
@@ -165,6 +165,10 @@ model.Encounter.prototype = {
         return this.reactionParagraph;
     },
 
+    /**
+     * Return the english name of the selected action, if an action
+     * has been selected.
+     */
     get actionName() {
         return this.actions && this.selectedActionIndex ?
                 this.actions[this.selectedActionIndex] : "";
