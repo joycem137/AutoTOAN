@@ -5,12 +5,10 @@ controller = {};
  * The page that handles displaying the various action choices
  * to the user.
  *
- * @param paragraphModel
  * @param parentController
  * @constructor
  */
-controller.ActionsPage = function(paragraphModel, parentController) {
-    this._model = paragraphModel;
+controller.ActionsPage = function(parentController) {
     this._parentController = parentController;
 
     this._pageElement = $("#actionsPage");
@@ -50,10 +48,10 @@ controller.ActionsPage.prototype = {
                 newButton.text(actions[index]);
 
                 newButton.click(function(index) {
-                    this._selectAction(index);
+                    this._parentController.selectAction(index);
                 }.bind(this, index));
 
-                //Append the element in page (in span).
+                //Append the element in page.
                 this._actionList.append(newButton);
             }
         }
@@ -64,17 +62,6 @@ controller.ActionsPage.prototype = {
 
     _clearActionList: function() {
         this._actionList.empty();
-    },
-
-    _selectAction: function(index) {
-        var paragraphNumber,
-            self = this;
-
-        paragraphNumber = this._currentEncounter.selectAction(index);
-
-        this._model.getParagraph(paragraphNumber, function(paragraph) {
-            self._parentController.handlePararaph(paragraph, self._currentEncounter);
-        });
     }
 };
 
@@ -323,7 +310,7 @@ controller.mainController = {
 
     _buildPages: function() {
         this._paragraphDisplayPage = new controller.ParagraphDisplayPage(this._paragraphModel, this);
-        this._actionsPage = new controller.ActionsPage(this._paragraphModel, this);
+        this._actionsPage = new controller.ActionsPage(this);
         this._mainInputPage = new controller.MainInputPage(this);
         this._sidebar = new controller.SidebarController();
     },
@@ -361,13 +348,28 @@ controller.mainController = {
     },
 
     /**
-     * If we are provided with a paragraph that was looked up, handle displaying it.
+     * Select the indicated action and display the resulting paragraph.
+     *
+     * @param index
+     */
+    selectAction: function(index) {
+        var paragraphNumber,
+            self = this;
+
+        paragraphNumber = this._currentEncounter.selectAction(index);
+
+        this._paragraphModel.getParagraph(paragraphNumber, function(paragraph) {
+            self.handlePararaph(paragraph, self._currentEncounter);
+        });
+    },
+
+    /**
+     * Handle displaying all types of paragraphs.
      *
      * @param paragraph
      * @param encounter
      */
     handlePararaph: function(paragraph, encounter) {
-        // Store our current encounter.
         if(paragraph) {
             if (paragraph.data && paragraph.data.type === "table") {
                 // If the paragraph was a table, select an encounter from it.
