@@ -31,7 +31,8 @@ controller.ActionsPage.prototype = {
             paragraphs = encounter.paragraphs,
             paragraph,
             index,
-            newButton;
+            newButton,
+            reactionPrompt;
 
         this._currentEncounter = encounter;
 
@@ -56,8 +57,12 @@ controller.ActionsPage.prototype = {
             }
         }
 
+        reactionPrompt = encounter.checkStatus("insane") ?
+                "Since you're <b>Insane</b>, have another player select your action." :
+                "Quick! Decide how you will react!"
+
         this._actionHeader.html("You have encountered <B>" +
-            encounter.name + "</B> on Matrix <B>" + encounter.tableId + "</B>!<BR>How will you to react?");
+            encounter.name + "</B> on Matrix <B>" + encounter.tableId + "</B>!<BR>" + reactionPrompt);
     },
 
     _clearActionList: function() {
