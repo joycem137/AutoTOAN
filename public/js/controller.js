@@ -27,35 +27,15 @@ controller.ActionsPage.prototype = {
         this._pageElement.css("display", "none");
     },
 
-    displayEncounterOptions: function(tableId, encounterName) {
-        var table, actions, adjective, paragraphs;
-
-        // Retrieve the list of actions from our particular reactoin table.
-        table = model.reactionTables.get(tableId.toUpperCase());
-        actions = table.actions;
-
-        // Look up the paragraphs associated with this encounter
-        adjective = model.reactionTables.findAdjective(encounterName, table);
-        paragraphs = table.adjectives[adjective];
-
-        this._currentEncounter = {
-            name: encounterName,
-            actions: actions,
-            paragraphs: paragraphs
-        };
-
-        this._showUserActions(actions, paragraphs, encounterName, tableId);
-    },
-
-    _clearActionList: function() {
-        this._actionList.empty();
-    },
-
-    _showUserActions: function(actions, paragraphs, encounterName, tableId) {
-        var numActions = actions.length,
+    displayEncounterOptions: function(encounter) {
+        var actions = encounter.actions,
+            numActions = actions.length,
+            paragraphs = encounter.paragraphs,
             paragraph,
             index,
             newButton;
+
+        this._currentEncounter = encounter;
 
         this._clearActionList();
 
@@ -79,18 +59,21 @@ controller.ActionsPage.prototype = {
         }
 
         this._actionHeader.html("You have encountered <B>" +
-            encounterName + "</B> on Matrix <B>" + tableId + "</B>!<BR>How will you to react?");
+            encounter.name + "</B> on Matrix <B>" + encounter.tableId + "</B>!<BR>How will you to react?");
+    },
+
+    _clearActionList: function() {
+        this._actionList.empty();
     },
 
     _selectAction: function(index) {
-        var currentEncounter = this._currentEncounter,
-            paragraphNumber,
+        var paragraphNumber,
             self = this;
 
-        paragraphNumber = currentEncounter.paragraphs[index] + util.rollDestinyDie();
-            
+        paragraphNumber = this._currentEncounter.rollForAction(index);
+
         this._model.getParagraph(paragraphNumber, function(paragraph) {
-            self._parentController.handlePararaph(paragraph, currentEncounter.name, 0);
+            self._parentController.handlePararaph(paragraph, self._currentEncounter);
         });
     }
 };
@@ -132,14 +115,14 @@ controller.ParagraphDisplayPage.prototype = {
      *
      * @param paragraph
      */
-    displayParagraphResults: function(paragraph, encounterName) {
+    displayParagraphResults: function(paragraph, encounter) {
         var headerText,
             bodyText;
 
         this._currentParagraph = {
             number: paragraph.number,
             data: paragraph.data,
-            name: encounterName
+            encounter: encounter
         };
 
         if (paragraph.data) {
@@ -162,7 +145,7 @@ controller.ParagraphDisplayPage.prototype = {
 
         if (paragraphData) {
             this._model.updateParagraph(paragraphNumber, paragraphData, function(paragraph) {
-                self._parentController.handlePararaph(paragraph, self._currentParagraph.name)
+                self._parentController.handlePararaph(paragraph, self._currentParagraph.encounter)
             });
         } else {
             this._resultHeaderEl.html("There is a problem with your paragraph.");
@@ -229,7 +212,7 @@ controller.MainInputPage = function(paragraphModel, parentController) {
 
     this._inputFormEl.keydown(function() {
         if (event.keyCode == 13) {
-            self._lookupParagraph();
+            self._lookupEncounter();
             return false;
         }
     });
@@ -251,29 +234,31 @@ controller.MainInputPage.prototype = {
         this._encounterNameEl.val("");
     },
 
-    getBonusRoll: function() {
-        var bonusRollValue = this._bonusRollEl.val();
-        return bonusRollValue ? parseInt(bonusRollValue, 10) : 0
-    },
-
     /**
-     * Lookup the indicated paragraph in the SQL database and
-     * subsequently display it on the screen.
+     * Lookup the indicated encounter in the tale of arabian nights book.
+     *
      */
-    _lookupParagraph: function() {
+    _lookupEncounter: function() {
         var paragraphNumber = this._paragraphNumberEl.val(),
             tableId = this._tableIdEl.val(),
+            bonusRollValue = this._bonusRollEl.val(),
+            bonusToRoll = bonusRollValue ? parseInt(bonusRollValue, 10) : 0,
             encounterName = this._encounterNameEl.val(),
-            self = this;
+            self = this,
+            encounter;
+
 
         this.reset();
 
+        // Create the encounter object we're going to be using.
+        encounter = new model.Encounter(paragraphNumber,tableId, encounterName, bonusToRoll);
+
         if (paragraphNumber) {
             this._model.getParagraph(paragraphNumber, function(paragraph) {
-                self._parentController.handlePararaph(paragraph, encounterName);
+                self._parentController.handlePararaph(paragraph, encounter);
             });
         } else if (tableId) {
-            this._parentController.handleReactionTable(tableId, encounterName);
+            this._parentController.handleReactionTable(encounter);
         }
     }
 };
@@ -286,6 +271,8 @@ controller.MainInputPage.prototype = {
  */
 controller.mainController = {
     onDocumentReady: function() {
+        this._currentEncounter = null;
+
         model.reactionTables.load();
         this._paragraphModel = new model.ParagraphModel();
 
@@ -309,14 +296,21 @@ controller.mainController = {
         newPage.show();
     },
 
-    handlePararaph: function(paragraph, encounterName) {
-        var bonusRoll = this._mainInputPage.getBonusRoll();
+    /**
+     * If we are provided with a paragraph that was looked up, handle displaying it.
+     *
+     * @param paragraph
+     * @param encounter
+     */
+    handlePararaph: function(paragraph, encounter) {
+        // Store our current encounter.
+        this._currentEncounter = encounter;
         if(paragraph) {
             if (paragraph.data && paragraph.data.type === "table") {
                 // If the paragraph was a table, select an encounter from it.
-                this._selectEncounterFromTable(paragraph, encounterName, bonusRoll);
+                this._selectEncounterFromTable(paragraph, encounter);
             } else {
-                this.displayParagraph(paragraph, encounterName);
+                this.displayParagraph(paragraph, encounter);
             }
         } else {
             alert("Error in paragraph loading.");
@@ -326,64 +320,57 @@ controller.mainController = {
     /**
      * Handle a reaction table.
      *
-     * @param tableId The name of the reaction table to display.
-     * @param encounterName The name of the encounter we are reacting to.
+     * @param encounter The encounter we are reacting to.
      */
-    handleReactionTable: function(tableId, encounterName) {
+    handleReactionTable: function(encounter) {
+        this._currentEncounter = encounter;
         this._showPage(this._actionsPage);
-        this._actionsPage.displayEncounterOptions(tableId, encounterName);
+        this._actionsPage.displayEncounterOptions(encounter);
     },
 
     /**
      * Displays the indicated paragraph on the screen.
      *
      * @param paragraph The paragraph to display
-     * @param encounterName The name of the encounter to display
+     * @param encounter The encounter to display
      */
-    displayParagraph: function(paragraph, encounterName) {
+    displayParagraph: function(paragraph, encounter) {
         this._showPage(this._paragraphDisplayPage);
-        this._paragraphDisplayPage.displayParagraphResults(paragraph, encounterName);
+        this._paragraphDisplayPage.displayParagraphResults(paragraph, encounter);
     },
 
     /**
      * Selected an encounter from an encounter table.
      *
      * @param paragraph The encounter table from the book
-     * @param encounterName Any additional encounter name information we've been provided.
-     *                      For some encounter tables, this is just the noun associated
-     *                      with our request.
-     * @param bonusRoll If the player has bonuses due to game mechanics, they are
-     *                  provided here.
+     * @param encounter The model for the encounter we're dealing with.
      */
-    _selectEncounterFromTable: function(paragraph, encounterName, bonusRoll) {
+    _selectEncounterFromTable: function(paragraph, encounter) {
         var tableOptions,
-            roll,
             selectedOption,
-            newEncounterName,
-            reactionTable;
+            encounterRoll;
 
         if (paragraph && paragraph.data && paragraph.data.type === "table") {
             tableOptions = paragraph.data.options;
 
-            // Roll a die and lookup our result
-            roll = bonusRoll + util.rollAD6(1);
-            selectedOption = tableOptions[roll - 1];
+            encounterRoll = encounter.rollForEncounter();
+            selectedOption = tableOptions[encounterRoll - 1];
 
             // Build our new encounter name
-            newEncounterName = selectedOption.name;
-            if (encounterName) {
-                newEncounterName += " " + encounterName;
-            }
+            encounter.appendToName(selectedOption.name);
 
             // Select either the table wide reaction table, or the specific one for this option.
-            reactionTable = paragraph.data.matrix || selectedOption.matrix;
+            encounter.tableId = paragraph.data.matrix || selectedOption.matrix;
 
             // Now show the table!
-            this.handleReactionTable(reactionTable, newEncounterName);
+            this.handleReactionTable(encounter);
         }
     }
 };
 
+/**
+ * Wait for document ready before getting this show on the road.
+ */
 $(document).ready(function() {
     controller.mainController.onDocumentReady();
 });
