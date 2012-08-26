@@ -195,6 +195,11 @@ controller.MainInputPage = function(parentController) {
     this._encounterNameEl = $("#encounterName");
     this._bonusRollEl = $("#bonusRoll");
 
+    this._inputFormEl.submit(function () {
+        self._lookupEncounter();
+        return false; // so it won't REALLY submit
+    });
+
     this._inputFormEl.keydown(function() {
         if (event.keyCode == 13) {
             self._lookupEncounter();
@@ -228,11 +233,11 @@ controller.MainInputPage.prototype = {
             tableId = this._tableIdEl.val(),
             locationBonusValue = this._bonusRollEl.val(),
             locationBonus = locationBonusValue ? parseInt(locationBonusValue, 10) : 0,
-            destinyBonus = parseInt($("input[@name=bonus]:checked").val(),10),
+            destinyBonus = parseInt($("input[name=bonus]:checked").val(),10),
             bonusToRoll = destinyBonus + locationBonus,
             encounterName = this._encounterNameEl.val(),
+            checkedStatuses = $("input[name=status]:checked"),
             encounter;
-
 
         this.reset();
 
