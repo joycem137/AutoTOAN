@@ -1,13 +1,20 @@
 // Start the controller namespace.
 controller = {};
 
+/**
+ * The page that handles displaying the various action choices
+ * to the user.
+ *
+ * @param paragraphModel
+ * @param parentController
+ * @constructor
+ */
 controller.ActionsPage = function(paragraphModel, parentController) {
     this._model = paragraphModel;
     this._parentController = parentController;
 
     this._pageElement = $("#actionsPage");
     this._actionHeader = $("#actionHeader");
-    this._actionMatrix = $("#actionMatrix");
     this._actionList = $("#actionList");
 };
 
@@ -88,18 +95,26 @@ controller.ActionsPage.prototype = {
     }
 };
 
+
+/**
+ * The page that displays a given paragraph to the user.
+ *
+ * @param paragraphModel
+ * @param parentController
+ * @constructor
+ */
 controller.ParagraphDisplayPage = function(paragraphModel, parentController) {
     this._model = paragraphModel;
     this._parentController = parentController;
 
     this._pageElement = $("#paragraphDisplayPage");
-    this._resultBodyEl = $("#resultBody")[0];
-    this._inputEl = $("#formParagraphChange")[0];
-    this._textAreaEl = $("#paragraphInputFromUser")[0];
-    this._paragraphInputEl = $('#paragraphInputFromUser')[0];
-    this._resultHeaderEl = $("#resultHeader")[0];
+    this._resultBodyEl = $("#resultBody");
+    this._inputEl = $("#formParagraphChange");
+    this._textAreaEl = $("#paragraphInputFromUser");
+    this._paragraphInputEl = $('#paragraphInputFromUser');
+    this._resultHeaderEl = $("#resultHeader");
 
-    $("#resultBody").click(this._switchToResultEditMode.bind(this));
+    this._resultBodyEl.click(this._switchToResultEditMode.bind(this));
     $('#submitNewParagraphButton').click(this._submitNewParagraph.bind(this));
 };
 
@@ -138,7 +153,7 @@ controller.ParagraphDisplayPage.prototype = {
     },
 
     _submitNewParagraph: function() {
-        var updatedParagraph = this._paragraphInputEl.value,
+        var updatedParagraph = this._paragraphInputEl.val(),
             paragraphNumber = this._currentParagraph.number,
             paragraphData,
             self = this;
@@ -150,7 +165,7 @@ controller.ParagraphDisplayPage.prototype = {
                 self._parentController.handlePararaph(paragraph, self._currentParagraph.name)
             });
         } else {
-            this._resultHeaderEl.innerHTML = "There is a problem with your paragraph.";
+            this._resultHeaderEl.html("There is a problem with your paragraph.");
         }
     },
 
@@ -163,18 +178,18 @@ controller.ParagraphDisplayPage.prototype = {
      */
     _showResult: function(header, body, showInput) {
         if (header) {
-            this._resultHeaderEl.innerHTML = header;
+            this._resultHeaderEl.html(header);
         }
 
         if (showInput) {
-            this._textAreaEl.value = body;
+            this._textAreaEl.val(body);
         } else {
-            this._resultBodyEl.innerHTML = body;
+            this._resultBodyEl.html(body);
         }
 
-        this._resultHeaderEl.style.display = header ? "block" : "none";
-        this._resultBodyEl.style.display = !showInput ? "block" : "none";
-        this._inputEl.style.display = showInput ? "block" : "none";
+        this._resultHeaderEl.css("display", header ? "block" : "none");
+        this._resultBodyEl.css("display", !showInput ? "block" : "none");
+        this._inputEl.css("display", showInput ? "block" : "none");
     },
 
     /**
@@ -192,6 +207,14 @@ controller.ParagraphDisplayPage.prototype = {
     }
 };
 
+
+/**
+ * The main page for requesting information from the user.
+ *
+ * @param paragraphModel
+ * @param parentController
+ * @constructor
+ */
 controller.MainInputPage = function(paragraphModel, parentController) {
     var self = this;
     this._model = paragraphModel;
@@ -199,10 +222,10 @@ controller.MainInputPage = function(paragraphModel, parentController) {
 
     this._pageElement = $("#mainInputPage");
     this._inputFormEl = $("#formParagraphRequest");
-    this._paragraphNumberEl = $("#paragraphNumber")[0];
-    this._tableIdEl = $("#tableId")[0];
-    this._encounterNameEl = $("#encounterName")[0];
-    this._bonusRollEl = $("#bonusRoll")[0];
+    this._paragraphNumberEl = $("#paragraphNumber");
+    this._tableIdEl = $("#tableId");
+    this._encounterNameEl = $("#encounterName");
+    this._bonusRollEl = $("#bonusRoll");
 
     this._inputFormEl.keydown(function() {
         if (event.keyCode == 13) {
@@ -223,13 +246,13 @@ controller.MainInputPage.prototype = {
     },
 
     reset: function() {
-        this._paragraphNumberEl.value = "";
-        this._tableIdEl.value = "";
-        this._encounterNameEl.value = "";
+        this._paragraphNumberEl.val("");
+        this._tableIdEl.val("");
+        this._encounterNameEl.val("");
     },
 
     getBonusRoll: function() {
-        var bonusRollValue = this._bonusRollEl.value;
+        var bonusRollValue = this._bonusRollEl.val();
         return bonusRollValue ? parseInt(bonusRollValue, 10) : 0
     },
 
@@ -238,9 +261,9 @@ controller.MainInputPage.prototype = {
      * subsequently display it on the screen.
      */
     _lookupParagraph: function() {
-        var paragraphNumber = this._paragraphNumberEl.value,
-            tableId = this._tableIdEl.value,
-            encounterName = this._encounterNameEl.value,
+        var paragraphNumber = this._paragraphNumberEl.val(),
+            tableId = this._tableIdEl.val(),
+            encounterName = this._encounterNameEl.val(),
             self = this;
 
         this.reset();
@@ -255,6 +278,12 @@ controller.MainInputPage.prototype = {
     }
 };
 
+
+/**
+ * The main uber-controller that knows and sees all.
+ *
+ * @type {Object}
+ */
 controller.mainController = {
     onDocumentReady: function() {
         model.reactionTables.load();
