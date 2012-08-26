@@ -70,7 +70,7 @@ controller.ActionsPage.prototype = {
         var paragraphNumber,
             self = this;
 
-        paragraphNumber = this._currentEncounter.rollForAction(index);
+        paragraphNumber = this._currentEncounter.selectAction(index);
 
         this._model.getParagraph(paragraphNumber, function(paragraph) {
             self._parentController.handlePararaph(paragraph, self._currentEncounter);
@@ -194,13 +194,11 @@ controller.ParagraphDisplayPage.prototype = {
 /**
  * The main page for requesting information from the user.
  *
- * @param paragraphModel
  * @param parentController
  * @constructor
  */
-controller.MainInputPage = function(paragraphModel, parentController) {
+controller.MainInputPage = function(parentController) {
     var self = this;
-    this._model = paragraphModel;
     this._parentController = parentController;
 
     this._pageElement = $("#mainInputPage");
@@ -244,7 +242,6 @@ controller.MainInputPage.prototype = {
             bonusRollValue = this._bonusRollEl.val(),
             bonusToRoll = bonusRollValue ? parseInt(bonusRollValue, 10) : 0,
             encounterName = this._encounterNameEl.val(),
-            self = this,
             encounter;
 
 
@@ -253,16 +250,59 @@ controller.MainInputPage.prototype = {
         // Create the encounter object we're going to be using.
         encounter = new model.Encounter(paragraphNumber,tableId, encounterName, bonusToRoll);
 
-        if (paragraphNumber) {
-            this._model.getParagraph(paragraphNumber, function(paragraph) {
-                self._parentController.handlePararaph(paragraph, encounter);
-            });
-        } else if (tableId) {
-            this._parentController.handleReactionTable(encounter);
-        }
+        this._parentController.startEncounter(encounter);
     }
 };
 
+controller.SidebarController = function() {
+    this._phaseEl = $("#sidebarPhase");
+    this._nameEl = $("#sidebarName");
+    this._matrixEl = $("#sidebarMatrix");
+    this._initialParagraphEl = $("#sidebarInitial");
+    this._bonusEl = $("#sidebarBonus");
+    this._encounterRollEl = $("#sidebarEncounterRoll");
+    this._actionEl = $("#sidebarAction");
+    this._centerEl = $("#sidebarCenterParagraph");
+    this._destinyEl = $("#sidebarDestiny");
+
+    this.clear();
+};
+
+controller.SidebarController.prototype = {
+    update: function(phaseName, newEncounter) {
+        var encounter;
+        if (newEncounter) this._encounter = newEncounter;
+        encounter = this._encounter;
+
+        // Don't change the phase name if we don't have one to provide.
+        if (phaseName) this._phaseEl.html("<B>Phase:</B> " + phaseName);
+
+        this._nameEl.html("<B>Name of Encounter:</B> " + encounter.name);
+        this._matrixEl.html("<B>Matrix ID:</B> " + encounter.tableId);
+        this._initialParagraphEl.html("<B>Encounter Table Paragraph:</B> " + encounter.initialParagraph);
+        this._bonusEl.html("<B>Encounter Bonus:</B> " + encounter.encounterBonus);
+        this._encounterRollEl.html("<B>Encounter Die Roll:</B> " + encounter.encounterRoll);
+        this._actionEl.html("<B>Action Selected:</B> " + encounter.actionName);
+        if (encounter.centerParagraph) this._centerEl.html("<B>Center Result Paragraph:</B> " + encounter.centerParagraph);
+
+        this._destinyEl.html("<B>Destiny Roll:</B> " + encounter.destinyRollIndicator);
+    },
+
+    clear: function() {
+        this._encounter = null;
+
+        this._phaseEl.html("<B>Phase:</B>");
+        this._nameEl.html("<B>Name of Encounter:</B>");
+        this._matrixEl.html("<B>Matrix ID:</B>");
+        this._initialParagraphEl.html("<B>Encounter Table Paragraph:</B>");
+        this._bonusEl.html("<B>Encounter Bonus:</B> ");
+        this._encounterRollEl.html("<B>Encounter Die Roll:</B>");
+        this._actionEl.html("<B>Action Selected:</B>");
+        this._centerEl.html("<B>Center Result Paragraph:</B>");
+
+        this._destinyEl.html("<B>Destiny Roll:</B>");
+    }
+};
 
 /**
  * The main uber-controller that knows and sees all.
@@ -284,7 +324,8 @@ controller.mainController = {
     _buildPages: function() {
         this._paragraphDisplayPage = new controller.ParagraphDisplayPage(this._paragraphModel, this);
         this._actionsPage = new controller.ActionsPage(this._paragraphModel, this);
-        this._mainInputPage = new controller.MainInputPage(this._paragraphModel, this);
+        this._mainInputPage = new controller.MainInputPage(this);
+        this._sidebar = new controller.SidebarController();
     },
 
     _showPage: function(newPage) {
@@ -297,6 +338,29 @@ controller.mainController = {
     },
 
     /**
+     * The user has requested an encounter!  Start it!
+     *
+     * @param encounter
+     */
+    startEncounter: function(encounter) {
+        var sidebar = this._sidebar,
+            self = this;
+
+        sidebar.clear();
+        this._currentEncounter = encounter;
+        sidebar.update("Starting Encounter", encounter);
+
+        // Based on what data we're starting with, handle this appropriately.
+        if (encounter.initialParagraph) {
+            this._paragraphModel.getParagraph(encounter.initialParagraph, function(paragraph) {
+                self.handlePararaph(paragraph, encounter);
+            });
+        } else if (encounter.tableId) {
+            this.handleReactionTable(encounter);
+        }
+    },
+
+    /**
      * If we are provided with a paragraph that was looked up, handle displaying it.
      *
      * @param paragraph
@@ -304,7 +368,6 @@ controller.mainController = {
      */
     handlePararaph: function(paragraph, encounter) {
         // Store our current encounter.
-        this._currentEncounter = encounter;
         if(paragraph) {
             if (paragraph.data && paragraph.data.type === "table") {
                 // If the paragraph was a table, select an encounter from it.
@@ -323,9 +386,9 @@ controller.mainController = {
      * @param encounter The encounter we are reacting to.
      */
     handleReactionTable: function(encounter) {
-        this._currentEncounter = encounter;
         this._showPage(this._actionsPage);
         this._actionsPage.displayEncounterOptions(encounter);
+        this._sidebar.update("Displaying Encounter Options");
     },
 
     /**
@@ -337,6 +400,7 @@ controller.mainController = {
     displayParagraph: function(paragraph, encounter) {
         this._showPage(this._paragraphDisplayPage);
         this._paragraphDisplayPage.displayParagraphResults(paragraph, encounter);
+        this._sidebar.update("Displaying Paragraph");
     },
 
     /**

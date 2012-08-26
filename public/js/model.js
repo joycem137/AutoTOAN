@@ -158,10 +158,16 @@ model.Encounter.prototype = {
     /**
      * Roll the destiny die to select the indicated action.
      */
-    rollForAction: function(index) {
+    selectAction: function(index) {
+        this.selectedActionIndex = index;
         this.centerParagraph = this.paragraphs[index];
         this.destinyRoll = util.rollDestinyDie();
         return this.reactionParagraph;
+    },
+
+    get actionName() {
+        return this.actions && this.selectedActionIndex ?
+                this.actions[this.selectedActionIndex] : "";
     },
 
     /**
@@ -191,7 +197,7 @@ model.Encounter.prototype = {
      * An array containing a list of actions available for this encounter.
      */
     get actions() {
-        return this._table.actions;
+        return this._table && this._table.actions;
     },
 
     get paragraphs() {
@@ -203,6 +209,18 @@ model.Encounter.prototype = {
             adjective = model.reactionTables.findAdjective(this.name, this._table);
             this._paragraphs = this._table.adjectives[adjective];
             return this._paragraphs;
+        }
+    },
+
+    get destinyRollIndicator() {
+        if (this.destinyRoll < 0) {
+            return "-";
+        } else if (this.destinyRoll > 0) {
+            return "+";
+        } else if (this.destinyRoll !== null){
+            return "N";
+        } else {
+            return "";
         }
     },
 
