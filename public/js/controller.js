@@ -59,7 +59,7 @@ controller.ActionsPage.prototype = {
 
         reactionPrompt = encounter.checkStatus("insane") ?
                 "Since you're <b>Insane</b>, have another player select your action." :
-                "Quick! Decide how you will react!"
+                "How will you react?"
 
         this._actionHeader.html("You have encountered <B>" +
             encounter.name + "</B> on Matrix <B>" + encounter.tableId + "</B>!<BR>" + reactionPrompt);
