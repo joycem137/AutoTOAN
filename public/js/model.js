@@ -186,6 +186,14 @@ model.Encounter.prototype = {
         }
     },
 
+    set statusList(value) {
+        this._statusList = value;
+    },
+
+    checkStatus: function(statusName) {
+        return this._statusList && this._statusList.indexOf(statusName) >= 0;
+    },
+
     set tableId(value) {
         this._tableId = value;
 

@@ -237,12 +237,20 @@ controller.MainInputPage.prototype = {
             bonusToRoll = destinyBonus + locationBonus,
             encounterName = this._encounterNameEl.val(),
             checkedStatuses = $("input[name=status]:checked"),
+            statusList = [],
             encounter;
 
         this.reset();
 
         // Create the encounter object we're going to be using.
         encounter = new model.Encounter(paragraphNumber,tableId, encounterName, bonusToRoll);
+
+        // Now handle the statuses
+        checkedStatuses.each(function() {
+            statusList.push(this.value);
+        });
+
+        encounter.statusList = statusList;
 
         this._parentController.startEncounter(encounter);
     }
@@ -345,13 +353,36 @@ controller.mainController = {
         sidebar.update("Starting Encounter", encounter);
 
         // Based on what data we're starting with, handle this appropriately.
-        if (encounter.initialParagraph) {
+        if (encounter.checkStatus("imprisoned")) {
+            this.handleImprisonedStatus();
+        }
+        else if (encounter.initialParagraph) {
             this._paragraphModel.getParagraph(encounter.initialParagraph, function(paragraph) {
-                self.handlePararaph(paragraph, encounter);
+                self.handlePararaph(paragraph);
             });
         } else if (encounter.tableId) {
-            this.handleReactionTable(encounter);
+            this.handleReactionTable();
         }
+    },
+
+    /**
+     * Process the imprisoned status.
+     */
+    handleImprisonedStatus: function() {
+        var encounter = this._currentEncounter,
+            table = model.reactionTables.get("K"),
+            adjectives = Object.keys(table.adjectives),
+            jailerType,
+            dieRoll;
+
+        encounter.appendToName("Jailer");
+
+        // Select an adjective
+        dieRoll = util.rollAD6();
+        jailerType = adjectives[dieRoll - 1].capitalize();
+        encounter.appendToName(jailerType);
+        encounter.tableId = "K";
+        this.handleReactionTable();
     },
 
     /**
@@ -366,7 +397,7 @@ controller.mainController = {
         paragraphNumber = this._currentEncounter.selectAction(index);
 
         this._paragraphModel.getParagraph(paragraphNumber, function(paragraph) {
-            self.handlePararaph(paragraph, self._currentEncounter);
+            self.handlePararaph(paragraph);
         });
     },
 
@@ -376,13 +407,13 @@ controller.mainController = {
      * @param paragraph
      * @param encounter
      */
-    handlePararaph: function(paragraph, encounter) {
+    handlePararaph: function(paragraph) {
         if(paragraph) {
             if (paragraph.data && paragraph.data.type === "table") {
                 // If the paragraph was a table, select an encounter from it.
-                this._selectEncounterFromTable(paragraph, encounter);
+                this._selectEncounterFromTable(paragraph);
             } else {
-                this.displayParagraph(paragraph, encounter);
+                this.displayParagraph(paragraph);
             }
         } else {
             alert("Error in paragraph loading.");
@@ -394,9 +425,9 @@ controller.mainController = {
      *
      * @param encounter The encounter we are reacting to.
      */
-    handleReactionTable: function(encounter) {
+    handleReactionTable: function() {
         this._showPage(this._actionsPage);
-        this._actionsPage.displayEncounterOptions(encounter);
+        this._actionsPage.displayEncounterOptions(this._currentEncounter);
         this._sidebar.update("Displaying Encounter Options");
     },
 
@@ -404,11 +435,10 @@ controller.mainController = {
      * Displays the indicated paragraph on the screen.
      *
      * @param paragraph The paragraph to display
-     * @param encounter The encounter to display
      */
-    displayParagraph: function(paragraph, encounter) {
+    displayParagraph: function(paragraph) {
         this._showPage(this._paragraphDisplayPage);
-        this._paragraphDisplayPage.displayParagraphResults(paragraph, encounter);
+        this._paragraphDisplayPage.displayParagraphResults(paragraph, this._currentEncounter);
         this._sidebar.update("Displaying Paragraph");
     },
 
@@ -416,12 +446,12 @@ controller.mainController = {
      * Selected an encounter from an encounter table.
      *
      * @param paragraph The encounter table from the book
-     * @param encounter The model for the encounter we're dealing with.
      */
-    _selectEncounterFromTable: function(paragraph, encounter) {
+    _selectEncounterFromTable: function(paragraph) {
         var tableOptions,
             selectedOption,
-            encounterRoll;
+            encounterRoll,
+            encounter = this._currentEncounter;
 
         if (paragraph && paragraph.data && paragraph.data.type === "table") {
             tableOptions = paragraph.data.options;
