@@ -290,6 +290,7 @@ controller.ActionsPage = function(paragraphModel, parentController) {
 
     this._pageElement = $("#actionsPage");
     this._actionHeader = $("#actionHeader");
+    this._actionMatrix = $("#actionMatrix");
     this._actionList = $("#actionList");
 };
 
@@ -319,14 +320,14 @@ controller.ActionsPage.prototype = {
             paragraphs: paragraphs
         };
 
-        this._showUserActions(actions, paragraphs, encounterName);
+        this._showUserActions(actions, paragraphs, encounterName, tableId);
     },
 
     _clearActionList: function() {
         this._actionList.empty();
     },
 
-    _showUserActions: function(actions, paragraphs, encounterName) {
+    _showUserActions: function(actions, paragraphs, encounterName, tableId) {
         var numActions = actions.length,
             paragraph,
             index,
@@ -354,7 +355,7 @@ controller.ActionsPage.prototype = {
         }
 
         this._actionHeader.html("You have encountered <B>" +
-            encounterName + "</B>!<BR>How will you to react?");
+            encounterName + "</B> on Matrix <B>" + tableId + "</B>!<BR>How will you to react?");
     },
 
     _selectAction: function(index) {
