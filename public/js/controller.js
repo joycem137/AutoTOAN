@@ -208,6 +208,8 @@ controller.MainInputPage = function(parentController) {
     });
 
     $("#badlyLostButton").click(this._handleBadlyLostEncounter.bind(this));
+    $("#imprisonedButton").click(this._handleJailerEncounter.bind(this));
+    $("#submitEncounterRequest").click(this._lookupEncounter.bind(this));
 };
 
 controller.MainInputPage.prototype = {
@@ -227,28 +229,21 @@ controller.MainInputPage.prototype = {
     },
 
     _handleBadlyLostEncounter: function() {
+        this._processEncounter("", "G", "Badly Lost");
+    },
+
+    _handleJailerEncounter: function() {
         var
-            locationBonusValue = this._bonusRollEl.val(),
-            locationBonus = locationBonusValue ? parseInt(locationBonusValue, 10) : 0,
-            destinyBonus = parseInt($("input[name=bonus]:checked").val(),10),
-            bonusToRoll = destinyBonus + locationBonus,
-            checkedStatuses = $("input[name=status]:checked"),
-            statusList = [],
-            encounter;
+            table = model.reactionTables.get("K"),
+            adjectives = Object.keys(table.adjectives),
+            jailerType,
+            dieRoll;
 
-        this.reset();
+        // Select an adjective
+        dieRoll = util.rollAD6();
+        jailerType = adjectives[dieRoll - 1].capitalize();
 
-        // Create the encounter object we're going to be using.
-        encounter = new model.Encounter(null, "G", "Badly Lost", bonusToRoll);
-
-        // Now handle the statuses
-        checkedStatuses.each(function() {
-            statusList.push(this.value);
-        });
-
-        encounter.statusList = statusList;
-
-        this._parentController.startEncounter(encounter);
+        this._processEncounter("", "K", jailerType + " Jailer");
     },
 
     /**
@@ -258,11 +253,17 @@ controller.MainInputPage.prototype = {
     _lookupEncounter: function() {
         var paragraphNumber = this._paragraphNumberEl.val(),
             tableId = this._tableIdEl.val(),
+            encounterName = this._encounterNameEl.val();
+
+        this._processEncounter(paragraphNumber, tableId, encounterName);
+    },
+
+    _processEncounter: function(paragraphNumber, tableId, encounterName) {
+        var
             locationBonusValue = this._bonusRollEl.val(),
             locationBonus = locationBonusValue ? parseInt(locationBonusValue, 10) : 0,
             destinyBonus = parseInt($("input[name=bonus]:checked").val(),10),
             bonusToRoll = destinyBonus + locationBonus,
-            encounterName = this._encounterNameEl.val(),
             checkedStatuses = $("input[name=status]:checked"),
             statusList = [],
             encounter;
@@ -281,6 +282,8 @@ controller.MainInputPage.prototype = {
 
         this._parentController.startEncounter(encounter);
     }
+
+
 };
 
 controller.SidebarController = function() {
@@ -380,40 +383,13 @@ controller.mainController = {
         sidebar.update("Starting Encounter", encounter);
 
         // Based on what data we're starting with, handle this appropriately.
-        if (encounter.checkStatus("imprisoned")) {
-            this.handleImprisonedStatus();
-        }
-        else if (encounter.initialParagraph) {
+        if (encounter.initialParagraph) {
             this._paragraphModel.getParagraph(encounter.initialParagraph, function(paragraph) {
                 self.handlePararaph(paragraph);
             });
         } else if (encounter.tableId) {
             this.handleReactionTable();
         }
-    },
-
-    /**
-     * Process the imprisoned status.
-     */
-    handleImprisonedStatus: function() {
-        var encounter = this._currentEncounter,
-            table = model.reactionTables.get("K"),
-            adjectives = Object.keys(table.adjectives),
-            jailerType,
-            dieRoll;
-
-        encounter.appendToName("Jailer");
-
-        // Select an adjective
-        dieRoll = util.rollAD6();
-        jailerType = adjectives[dieRoll - 1].capitalize();
-        encounter.appendToName(jailerType);
-
-        // Set the table
-        encounter.tableId = "K";
-
-        // And handle the reaction table that results!
-        this.handleReactionTable();
     },
 
     /**
