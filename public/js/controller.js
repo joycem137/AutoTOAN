@@ -381,7 +381,11 @@ controller.mainController = {
         dieRoll = util.rollAD6();
         jailerType = adjectives[dieRoll - 1].capitalize();
         encounter.appendToName(jailerType);
+
+        // Set the table
         encounter.tableId = "K";
+
+        // And handle the reaction table that results!
         this.handleReactionTable();
     },
 
