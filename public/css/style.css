@@ -262,6 +262,13 @@ td { vertical-align: top; }
     width: 300px;
 }
 
+#dieRollPage {
+    display: none;
+}
+
+#dieRollInput {
+    width: 14px;
+}
 
 
 

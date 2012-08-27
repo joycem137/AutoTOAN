@@ -137,8 +137,8 @@ model.Encounter.prototype = {
     /**
      * Roll for the indicated encounter and store the rolled value here.
      */
-    rollForEncounter: function() {
-        this.dieRollForEncounter = util.rollAD6(1);
+    rollForEncounter: function(dieRoll) {
+        this.dieRollForEncounter = dieRoll;
         return this.encounterRoll;
     },
 

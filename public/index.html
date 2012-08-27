@@ -39,6 +39,7 @@
     <div role="main">
 
         <button id="newEncounterButton" type="button">New Encounter</button>
+        <input type="checkbox" id="manualDieRoll"> Manual Die Rolling
 
         <div id="mainInputPage">
             <h2>Encounter Lookup</h2>
@@ -96,6 +97,16 @@
             <h1>Encounter</h1>
             <div id="actionHeader"></div>
             <div id="actionList"></div>
+            <hr>
+        </div>
+
+        <div id="dieRollPage">
+            <h1>Roll a Die!</h1>
+            <div id="dieRollHeader"></div>
+            Die Roll: <input type="text" id="dieRollInput"/>
+            <button id="enterRoll" type="button">Enter this roll</button>
+            <button id="autoRoll" type="button">Let the computer roll</button>
+            <div id="dieRollOptions"></div>
             <hr>
         </div>
 

@@ -274,6 +274,7 @@ controller.MainInputPage.prototype = {
             encounterButtonsToShow = [],
             encounterButton, i, style;
 
+        // Clean up our statuses.
         if (!checkStatus("pursued")) {
             this._pursuer.val("");
         }
@@ -416,6 +417,69 @@ controller.SidebarController = function() {
     this.clear();
 };
 
+controller.DieRollPage = function() {
+    var self = this;
+
+    this._pageElement = $("#dieRollPage");
+    this._dieRollInput = $("#dieRollInput");
+    this._header = $("#dieRollHeader");
+    this._options = $("#dieRollOptions");
+
+    $("#autoRoll").click(this._handleAutoRoll.bind(this));
+    $("#enterRoll").click(this._submitRoll.bind(this));
+
+    this._dieRollInput.keydown(function(event) {
+        if (event.keyCode === 13) {
+            self._submitRoll();
+        }
+    });
+};
+
+controller.DieRollPage.prototype = {
+    show: function() {
+        this.reset();
+        this._pageElement.css("display", "block");
+    },
+
+    hide: function() {
+        this._pageElement.css("display", "none");
+    },
+
+    reset: function() {
+        this._dieRollInput.val("");
+        this._options.empty();
+    },
+
+    requestDieRoll: function(header, options, callback) {
+        var i,
+            numOptions = options ? options.length : 0,
+            option,
+            newOption;
+
+        this._callback = callback;
+
+        this._header.html(header);
+
+        for (i = 0; i < numOptions; i++) {
+            option = options[i];
+
+            // Create a new button.
+            newOption = $(document.createElement("li"));
+            newOption.html("<b>" + (i + 1) + ".</b> " + option);
+
+            this._options.append(newOption);
+        }
+    },
+
+    _handleAutoRoll: function() {
+        this._callback(util.rollAD6(1));
+    },
+
+    _submitRoll: function() {
+        this._callback(parseInt(this._dieRollInput.val(), 10));
+    }
+};
+
 controller.SidebarController.prototype = {
     update: function(newEncounter) {
         var encounter;
@@ -457,6 +521,8 @@ controller.mainController = {
     onDocumentReady: function() {
         this._currentEncounter = null;
 
+        this._manualDieRoll = $("#manualDieRoll");
+
         model.reactionTables.load();
         this._paragraphModel = new model.ParagraphModel();
 
@@ -471,6 +537,7 @@ controller.mainController = {
         this._paragraphDisplayPage = new controller.ParagraphDisplayPage(this._paragraphModel, this);
         this._actionsPage = new controller.ActionsPage(this);
         this._mainInputPage = new controller.MainInputPage(this);
+        this._dieRollPage = new controller.DieRollPage();
         this._sidebar = new controller.SidebarController();
     },
 
@@ -571,6 +638,29 @@ controller.mainController = {
         this._sidebar.update();
     },
 
+    _useManualDieRoll: function() {
+        return this._manualDieRoll.prop("checked");
+    },
+
+    requestAD6Roll: function(callback, encounter, options) {
+        var reason;
+
+        if (encounter.checkStatus("blessed")) {
+            reason = "Since you are <b>Blessed</b>, you may manually enter an option.";
+        } else if (encounter.checkStatus("accursed")) {
+            reason = "Since you are <b>Accursed</b>, select another player to manually select an option.";
+        } else if (this._useManualDieRoll()) {
+            reason = "Manually roll a die and record the result here!";
+        }
+
+        if (reason) {
+            this._showPage(this._dieRollPage);
+            this._dieRollPage.requestDieRoll(reason, options, callback);
+        } else {
+            callback(util.rollAD6(1));
+        }
+    },
+
     /**
      * Selected an encounter from an encounter table.
      *
@@ -580,27 +670,34 @@ controller.mainController = {
         var tableOptions,
             selectedOption,
             encounterRoll,
-            encounter = this._currentEncounter;
+            encounter = this._currentEncounter,
+            dieRollOptions = [],
+            i, option,
+            self = this,
+            dieRollCallback = function(dieRoll) {
+                encounterRoll = encounter.rollForEncounter(dieRoll);
+
+                selectedOption = tableOptions[encounterRoll - 1];
+
+                // Build our new encounter name
+                encounter.appendToName(selectedOption.name);
+
+                // Select either the table wide reaction table, or the specific one for this option.
+                encounter.tableId = paragraph.data.matrix || selectedOption.matrix;
+
+                // Now show the table!
+                self.handleReactionTable(encounter);
+            };
 
         if (paragraph && paragraph.data && paragraph.data.type === "table") {
             tableOptions = paragraph.data.options;
 
-            if (encounter.checkStatus("blessed") || encounter.checkStatus("accursed") ) {
-                // TODO: Handle this status differently.
-                encounterRoll = encounter.rollForEncounter();
-            } else {
-                encounterRoll = encounter.rollForEncounter();
+            for (i = 0; i < 6; i++) {
+                option = tableOptions[Math.min(i + encounter.encounterBonus, 11)];
+                dieRollOptions.push(option.name + " " + encounter.name);
             }
-            selectedOption = tableOptions[encounterRoll - 1];
 
-            // Build our new encounter name
-            encounter.appendToName(selectedOption.name);
-
-            // Select either the table wide reaction table, or the specific one for this option.
-            encounter.tableId = paragraph.data.matrix || selectedOption.matrix;
-
-            // Now show the table!
-            this.handleReactionTable(encounter);
+            this.requestAD6Roll(dieRollCallback, encounter, dieRollOptions)
         }
     }
 };
