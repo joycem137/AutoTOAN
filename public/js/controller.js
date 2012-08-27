@@ -53,16 +53,23 @@ controller.ActionsPage.prototype = {
                 }.bind(this, index));
 
                 //Append the element in page.
-                this._actionList.append(newButton);
+                if (!encounter.checkStatus("lovestruck") || actions[index] === "Court") {
+                    this._actionList.append(newButton);
+                }
             }
         }
 
-        reactionPrompt = encounter.checkStatus("insane") ?
-                "Since you're <b>Insane</b>, have another player select your action." :
-                "How will you react?"
+        if (encounter.checkStatus("insane")) {
+            reactionPrompt = "Since you're <b>Insane</b>, have another player select your action.";
+        } else if (encounter.checkStatus("lovestruck")) {
+            reactionPrompt = "Since you're <b>Love Struck</b>, You must choose to court.";
+        } else {
+            reactionPrompt = "How will you react?";
+        }
 
         this._actionHeader.html("You have encountered <B>" +
-            encounter.name + "</B> on Matrix <B>" + encounter.tableId + "</B>!<BR>" + reactionPrompt);
+            encounter.name + "</B> on Matrix <B>" + encounter.tableId +
+            "</B>!<BR>" + reactionPrompt);
     },
 
     _clearActionList: function() {
@@ -215,6 +222,8 @@ controller.MainInputPage = function(parentController) {
     $("#badlyLostButton").click(this._handleBadlyLostEncounter.bind(this));
     $("#imprisonedButton").click(this._handleJailerEncounter.bind(this));
     $("#submitEncounterRequest").click(this._lookupEncounter.bind(this));
+    $("#femaleLoveStruckButton").click(this._handleLoveStruckEncounter.bind(this, "female"));
+    $("#maleLoveStruckButton").click(this._handleLoveStruckEncounter.bind(this, "male"));
 };
 
 controller.MainInputPage.prototype = {
@@ -231,6 +240,27 @@ controller.MainInputPage.prototype = {
         this._paragraphNumberEl.val("");
         this._tableIdEl.val("");
         this._encounterNameEl.val("");
+    },
+
+    _handleLoveStruckEncounter: function(gender) {
+        var dieRoll,
+            tableId,
+            adjective = gender === "male" ? "Handsome" : "Beautiful",
+            noun;
+
+        $("#loveStruckStatus").prop("checked", true);
+
+        // Select an adjective
+        dieRoll = util.rollAD6(1);
+        if (dieRoll <= 3) {
+            tableId = "L";
+            noun = gender === "male" ? "Soldier" : "Maiden";
+        } else {
+            tableId = "A";
+            noun = gender === "male" ? "Prince" : "Princess";
+        }
+
+        this._processEncounter("", tableId, adjective + " " + noun);
     },
 
     _handleBadlyLostEncounter: function() {
@@ -468,7 +498,12 @@ controller.mainController = {
         if (paragraph && paragraph.data && paragraph.data.type === "table") {
             tableOptions = paragraph.data.options;
 
-            encounterRoll = encounter.rollForEncounter();
+            if (encounter.checkStatus("blessed") || encounter.checkStatus("accursed") ) {
+                // TODO: Handle this status differently.
+                encounterRoll = encounter.rollForEncounter();
+            } else {
+                encounterRoll = encounter.rollForEncounter();
+            }
             selectedOption = tableOptions[encounterRoll - 1];
 
             // Build our new encounter name
