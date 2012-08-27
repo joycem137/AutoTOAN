@@ -329,34 +329,45 @@ controller.MainInputPage.prototype = {
     },
 
     _handlePursuedEncounter: function() {
-        var dieRoll = util.rollAD6(1);
+        var pursuerName = "Pursuing " + this._pursuer.val(),
+            normalEncounter = "Normal Encounter",
+            options = [pursuerName, pursuerName, normalEncounter, normalEncounter, normalEncounter, normalEncounter],
+            dieRollCallback = function(dieRoll) {
+                this._haveCheckedForPursuer = true;
 
-        this._haveCheckedForPursuer = true;
+                if (dieRoll < 3) {
+                    this._processEncounter("", "H", pursuerName);
+                } else {
+                    this._evaluateStatus();
+                }
+            };
 
-        if (dieRoll < 3) {
-            this._processEncounter("", "H", "Pursuing " + this._pursuer.val());
-        } else {
-            this._evaluateStatus();
-        }
+        this._parentController.requestAD6Roll(dieRollCallback.bind(this), options);
     },
 
     _handleLoveStruckEncounter: function(gender) {
-        var dieRoll,
+        var
             tableId,
             adjective = gender === "male" ? "Handsome" : "Beautiful",
-            noun;
+            firstNoun = gender === "male" ? "Soldier" : "Maiden",
+            secondNoun = gender === "male" ? "Prince" : "Princess",
+            firstName = adjective + " " + firstNoun,
+            secondName = adjective + " " + secondNoun,
+            options = [firstName, firstName, firstName, secondName, secondName, secondName];
+            dieRollCallback = function(dieRoll) {
+                var name;
+                if (dieRoll <= 3) {
+                    tableId = "L";
+                    name = firstName;
+                } else {
+                    tableId = "A";
+                    name = secondName;
+                }
 
-        // Select an adjective
-        dieRoll = util.rollAD6(1);
-        if (dieRoll <= 3) {
-            tableId = "L";
-            noun = gender === "male" ? "Soldier" : "Maiden";
-        } else {
-            tableId = "A";
-            noun = gender === "male" ? "Prince" : "Princess";
-        }
+                this._processEncounter("", tableId, name);
+            };
 
-        this._processEncounter("", tableId, adjective + " " + noun);
+        this._parentController.requestAD6Roll(dieRollCallback.bind(this), options);
     },
 
     _handleBadlyLostEncounter: function() {
@@ -367,14 +378,17 @@ controller.MainInputPage.prototype = {
         var
             table = model.reactionTables.get("K"),
             adjectives = Object.keys(table.adjectives),
-            jailerType,
-            dieRoll;
+            options = [],
+            dieRollCallback = function(dieRoll) {
+                this._processEncounter("", "K", options[dieRoll - 1]);
+            },
+            i;
 
-        // Select an adjective
-        dieRoll = util.rollAD6();
-        jailerType = adjectives[dieRoll - 1].capitalize();
+        for (i = 0; i < adjectives.length; i++ ) {
+            options.push (adjectives[i].capitalize() + " Jailer");
+        }
 
-        this._processEncounter("", "K", jailerType + " Jailer");
+        this._parentController.requestAD6Roll(dieRollCallback.bind(this), options);
     },
 
     /**
