@@ -59,10 +59,10 @@ controller.ActionsPage.prototype = {
             }
         }
 
-        if (encounter.checkStatus("insane")) {
-            reactionPrompt = "Since you're <b>Insane</b>, have another player select your action.";
-        } else if (encounter.checkStatus("lovestruck")) {
+        if (encounter.checkStatus("lovestruck")) {
             reactionPrompt = "Since you're <b>Love Struck</b>, You must choose to court.";
+        } else if (encounter.checkStatus("insane")) {
+            reactionPrompt = "Since you're <b>Insane</b>, have another player select your action.";
         } else {
             reactionPrompt = "How will you react?";
         }
