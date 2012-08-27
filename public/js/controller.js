@@ -206,7 +206,6 @@ controller.ParagraphDisplayPage.prototype = {
  * @constructor
  */
 controller.MainInputPage = function(parentController) {
-    var self = this;
     this._parentController = parentController;
 
     this._pageElement = $("#mainInputPage");
@@ -216,41 +215,115 @@ controller.MainInputPage = function(parentController) {
     this._encounterNameEl = $("#encounterName");
     this._bonusRollEl = $("#bonusRoll");
     this._pursuer = $("#pursuer");
+
     this._pursuedButton = $("#pursuedButton");
+    this._badlyLostButton = $("#badlyLostButton");
+    this._imprisonedButton = $("#imprisonedButton");
+    this._femaleLoveStruckButton = $("#femaleLoveStruckButton");
+    this._maleLoveStruckButton = $("#maleLoveStruckButton");
+    this._submitEncounterButton = $("#submitEncounterRequest");
 
-    $("#submitEncounterRequest").click(this._lookupEncounter.bind(this));
+    this._inputFormEl.change(this._evaluateStatus.bind(this));
 
-    $("#badlyLostButton").click(this._handleBadlyLostEncounter.bind(this));
-    $("#imprisonedButton").click(this._handleJailerEncounter.bind(this));
+    this._submitEncounterButton.click(this._lookupEncounter.bind(this));
+    this._badlyLostButton.click(this._handleBadlyLostEncounter.bind(this));
+    this._imprisonedButton.click(this._handleJailerEncounter.bind(this));
     this._pursuedButton.click(this._handlePursuedEncounter.bind(this));
-    $("#femaleLoveStruckButton").click(this._handleLoveStruckEncounter.bind(this, "female"));
-    $("#maleLoveStruckButton").click(this._handleLoveStruckEncounter.bind(this, "male"));
+    this._femaleLoveStruckButton.click(this._handleLoveStruckEncounter.bind(this, "female"));
+    this._maleLoveStruckButton .click(this._handleLoveStruckEncounter.bind(this, "male"));
+
+    this._encounterButtons = [
+        this._pursuedButton,
+        this._badlyLostButton,
+        this._imprisonedButton,
+        this._femaleLoveStruckButton,
+        this._maleLoveStruckButton,
+        this._submitEncounterButton
+    ];
 };
 
 controller.MainInputPage.prototype = {
     show: function() {
+        this.reset();
         this._pageElement.css("display", "block");
     },
 
     hide: function() {
-        // Don't actually hide.
-        this.reset();
+        this._pageElement.css("display", "none");
     },
 
     reset: function() {
         this._paragraphNumberEl.val("");
         this._tableIdEl.val("");
         this._encounterNameEl.val("");
-        this._pursuedButton.css("display", "block");
+        this._bonusRollEl.val("");
+        this._haveCheckedForPursuer = false;
+        this._evaluateStatus();
+    },
+
+    /**
+     * Look through the status and based on what we find, set the visibility
+     * of the various encounter buttons
+     */
+    _evaluateStatus: function() {
+        var checkedStatuses = this._getCheckedStatuses(),
+            checkStatus = function(status) {
+                return checkedStatuses.indexOf(status) >= 0;
+            },
+            encounterButtonsToShow = [],
+            encounterButton, i, style;
+
+        if (checkStatus("pursued") && !this._haveCheckedForPursuer) {
+            encounterButtonsToShow.push(this._pursuedButton);
+        } else if (checkStatus("loveStruck")) {
+            encounterButtonsToShow.push(this._maleLoveStruckButton);
+            encounterButtonsToShow.push(this._femaleLoveStruckButton);
+        } else if (checkStatus("imprisoned")) {
+            encounterButtonsToShow.push(this._imprisonedButton);
+        } else {
+            encounterButtonsToShow.push(this._submitEncounterButton);
+
+            if (checkStatus("lost")) {
+                encounterButtonsToShow.push(this._badlyLostButton);
+            }
+        }
+
+        // Now show/hide the appropriate buttons
+        for ( i = 0; i < this._encounterButtons.length; i++) {
+            encounterButton = this._encounterButtons[i];
+            if (encounterButtonsToShow.indexOf(encounterButton) >= 0) {
+                style = "block";
+            } else {
+                style = "none";
+            }
+            encounterButton.css("display", style);
+        }
+    },
+
+    /**
+     * Return a list of all of the statuses that are checked.
+     */
+    _getCheckedStatuses: function() {
+        var checkedStatuses = $("input[name=status]:checked"),
+            statusList = [];
+
+        // Now handle the statuses
+        checkedStatuses.each(function() {
+            statusList.push(this.value);
+        });
+
+        return statusList;
     },
 
     _handlePursuedEncounter: function() {
         var dieRoll = util.rollAD6(1);
 
+        this._haveCheckedForPursuer = true;
+
         if (dieRoll < 3) {
             this._processEncounter("", "H", "Pursuing " + this._pursuer.val());
         } else {
-            this._pursuedButton.css("display", "none");
+            this._evaluateStatus();
         }
     },
 
@@ -259,8 +332,6 @@ controller.MainInputPage.prototype = {
             tableId,
             adjective = gender === "male" ? "Handsome" : "Beautiful",
             noun;
-
-        $("#loveStruckStatus").prop("checked", true);
 
         // Select an adjective
         dieRoll = util.rollAD6(1);
@@ -311,19 +382,13 @@ controller.MainInputPage.prototype = {
             locationBonus = locationBonusValue ? parseInt(locationBonusValue, 10) : 0,
             destinyBonus = parseInt($("input[name=bonus]:checked").val(),10),
             bonusToRoll = destinyBonus + locationBonus,
-            checkedStatuses = $("input[name=status]:checked"),
-            statusList = [],
+            statusList = this._getCheckedStatuses(),
             encounter;
 
         this.reset();
 
         // Create the encounter object we're going to be using.
         encounter = new model.Encounter(paragraphNumber,tableId, encounterName, bonusToRoll);
-
-        // Now handle the statuses
-        checkedStatuses.each(function() {
-            statusList.push(this.value);
-        });
 
         encounter.statusList = statusList;
 
@@ -334,7 +399,6 @@ controller.MainInputPage.prototype = {
 };
 
 controller.SidebarController = function() {
-    this._phaseEl = $("#sidebarPhase");
     this._nameEl = $("#sidebarName");
     this._matrixEl = $("#sidebarMatrix");
     this._initialParagraphEl = $("#sidebarInitial");
@@ -348,13 +412,10 @@ controller.SidebarController = function() {
 };
 
 controller.SidebarController.prototype = {
-    update: function(phaseName, newEncounter) {
+    update: function(newEncounter) {
         var encounter;
         if (newEncounter) this._encounter = newEncounter;
         encounter = this._encounter;
-
-        // Don't change the phase name if we don't have one to provide.
-        if (phaseName) this._phaseEl.html("<B>Phase:</B> " + phaseName);
 
         this._nameEl.html("<B>Name of Encounter:</B> " + encounter.name);
         this._matrixEl.html("<B>Matrix ID:</B> " + encounter.tableId);
@@ -370,7 +431,6 @@ controller.SidebarController.prototype = {
     clear: function() {
         this._encounter = null;
 
-        this._phaseEl.html("<B>Phase:</B>");
         this._nameEl.html("<B>Name of Encounter:</B>");
         this._matrixEl.html("<B>Matrix ID:</B>");
         this._initialParagraphEl.html("<B>Encounter Table Paragraph:</B>");
@@ -398,6 +458,8 @@ controller.mainController = {
         this._buildPages();
 
         this._showPage(this._mainInputPage);
+
+        $("#newEncounterButton").click(this._resetEncounterButton.bind(this));
     },
 
     _buildPages: function() {
@@ -417,6 +479,14 @@ controller.mainController = {
     },
 
     /**
+     * Starts a new encounter.
+     */
+    _resetEncounterButton: function (){
+        this._sidebar.clear();
+        this._showPage(this._mainInputPage);
+    },
+
+    /**
      * The user has requested an encounter!  Start it!
      *
      * @param encounter
@@ -427,7 +497,7 @@ controller.mainController = {
 
         sidebar.clear();
         this._currentEncounter = encounter;
-        sidebar.update("Starting Encounter", encounter);
+        sidebar.update(encounter);
 
         // Based on what data we're starting with, handle this appropriately.
         if (encounter.initialParagraph) {
@@ -482,7 +552,7 @@ controller.mainController = {
     handleReactionTable: function() {
         this._showPage(this._actionsPage);
         this._actionsPage.displayEncounterOptions(this._currentEncounter);
-        this._sidebar.update("Displaying Encounter Options");
+        this._sidebar.update();
     },
 
     /**
@@ -493,7 +563,7 @@ controller.mainController = {
     displayParagraph: function(paragraph) {
         this._showPage(this._paragraphDisplayPage);
         this._paragraphDisplayPage.displayParagraphResults(paragraph, this._currentEncounter);
-        this._sidebar.update("Displaying Paragraph");
+        this._sidebar.update();
     },
 
     /**
