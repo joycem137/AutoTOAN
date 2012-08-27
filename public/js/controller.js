@@ -471,6 +471,21 @@ controller.DieRollPage.prototype = {
     },
 
     requestDieRoll: function(header, options, callback) {
+        this._destinyDie = false;
+
+        this._requestDieRoll(header, options, callback);
+    },
+
+    requestDestinyRoll: function(callback, centerParagraph) {
+        this._destinyDie = true;
+
+        this._requestDieRoll("Manually roll a destiny die and record the result.",
+            [centerParagraph - 1, centerParagraph, centerParagraph + 1],
+            callback);
+
+    },
+
+    _requestDieRoll: function(header, options, callback) {
         var i,
             numOptions = options ? options.length : 0,
             option,
@@ -492,13 +507,22 @@ controller.DieRollPage.prototype = {
     },
 
     _handleAutoRoll: function() {
-        this._callback(util.rollAD6(1));
+        if (this._destinyDie) {
+            this._callback(util.rollDestinyDie());
+        } else {
+            this._callback(util.rollAD6(1));
+        }
     },
 
     _submitRoll: function() {
-        var dieRoll = parseInt(this._dieRollInput.val(), 10);
-        dieRoll = Math.min(dieRoll, 6);
-        dieRoll = Math.max(dieRoll, 1);
+        var dieRoll = parseInt(this._dieRollInput.val(), 10);;
+        if (this._destinyDie) {
+            dieRoll = Math.min(dieRoll, 1);
+            dieRoll = Math.max(dieRoll, -1);
+        } else {
+            dieRoll = Math.min(dieRoll, 6);
+            dieRoll = Math.max(dieRoll, 1);
+        }
         this._callback(dieRoll);
     }
 };
@@ -611,13 +635,18 @@ controller.mainController = {
      */
     selectAction: function(index) {
         var paragraphNumber,
-            self = this;
+            centerParagraph,
+            self = this,
+            dieRollCallback = function(dieRoll) {
+                paragraphNumber = self._currentEncounter.getReactionParagraph(dieRoll);
+                self._paragraphModel.getParagraph(paragraphNumber, function(paragraph) {
+                    self.handlePararaph(paragraph);
+                });
 
-        paragraphNumber = this._currentEncounter.selectAction(index);
+            };
 
-        this._paragraphModel.getParagraph(paragraphNumber, function(paragraph) {
-            self.handlePararaph(paragraph);
-        });
+        centerParagraph = this._currentEncounter.selectAction(index);
+        this.requestADestinyRoll(dieRollCallback.bind(this), centerParagraph);
     },
 
     /**
@@ -660,6 +689,14 @@ controller.mainController = {
         this._sidebar.update();
     },
 
+    /**
+     * Request a d6 roll.  If appropriate, will allow the user to specify the roll.
+     *
+     * The callback will be executed with the die roll received.
+     *
+     * @param callback
+     * @param options
+     */
     requestAD6Roll: function(callback, options) {
         var reason,
             player = this._currentPlayer;
@@ -677,6 +714,21 @@ controller.mainController = {
             this._dieRollPage.requestDieRoll(reason, options, callback);
         } else {
             callback(util.rollAD6(1));
+        }
+    },
+
+    /**
+     * Request the indicated destiny roll.
+     *
+     * @param callback
+     * @param centerParagraph
+     */
+    requestADestinyRoll: function(callback, centerParagraph) {
+        if (this._currentPlayer.manualDieRoll) {
+            this._showPage(this._dieRollPage);
+            this._dieRollPage.requestDestinyRoll(callback, centerParagraph);
+        } else {
+            callback(util.rollDestinyDie());
         }
     },
 
@@ -710,6 +762,7 @@ controller.mainController = {
 
         if (paragraph && paragraph.data && paragraph.data.type === "table") {
             tableOptions = paragraph.data.options;
+
 
             for (i = 0; i < 6; i++) {
                 option = tableOptions[Math.min(i + encounter.encounterBonus, 11)];

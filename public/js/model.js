@@ -176,11 +176,10 @@ model.Encounter.prototype = {
     /**
      * Roll the destiny die to select the indicated action.
      */
-    selectAction: function(index) {
+    selectAction: function(index, destinyRoll) {
         this.selectedActionIndex = index;
         this.centerParagraph = this.paragraphs[index];
-        this.destinyRoll = util.rollDestinyDie();
-        return this.reactionParagraph;
+        return this.centerParagraph;
     },
 
     /**
@@ -196,7 +195,8 @@ model.Encounter.prototype = {
      * Returns the reaction paragraph based on combining the center paragraph
      * and destiny roll;
      */
-    get reactionParagraph() {
+    getReactionParagraph: function(destinyRoll) {
+        this.destinyRoll = destinyRoll;
         if (this.centerParagraph > 0 && this.destinyRoll !== null) {
             return this.centerParagraph + this.destinyRoll;
         } else {
