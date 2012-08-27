@@ -32,11 +32,18 @@ controller.ActionsPage.prototype = {
             paragraph,
             index,
             newButton,
-            reactionPrompt;
+            reactionPrompt,
+            onlyUseAction;
 
         this._currentEncounter = encounter;
 
         this._clearActionList();
+
+        if (encounter.checkStatus("loveStruck") && actions.indexOf("Court") >= 0) {
+            onlyUseAction = "Court";
+        } else if (encounter.checkStatus("envious") && actions.indexOf("Rob") >= 0) {
+            onlyUseAction = "Rob";
+        }
 
         for (index = 0; index < numActions; index++) {
             paragraph = paragraphs[index];
@@ -53,14 +60,16 @@ controller.ActionsPage.prototype = {
                 }.bind(this, index));
 
                 //Append the element in page.
-                if (!encounter.checkStatus("lovestruck") || actions[index] === "Court") {
+                if (!onlyUseAction || actions[index] === onlyUseAction) {
                     this._actionList.append(newButton);
                 }
             }
         }
 
-        if (encounter.checkStatus("lovestruck")) {
+        if (encounter.checkStatus("loveStruck")) {
             reactionPrompt = "Since you're <b>Love Struck</b>, You must choose to court.";
+        } else if (encounter.checkStatus("envious")) {
+            reactionPrompt = "Since you're <b>Envious</b>, you must choose to rob.";
         } else if (encounter.checkStatus("insane")) {
             reactionPrompt = "Since you're <b>Insane</b>, have another player select your action.";
         } else {
