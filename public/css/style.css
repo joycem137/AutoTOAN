@@ -273,7 +273,8 @@ td { vertical-align: top; }
 #infoSidebar {
     position: absolute;
     top: 0px;
-    left: 75%;
+    left: 73%;
+    width: 25%;
     background: white;
     border: 5px solid;
 }
