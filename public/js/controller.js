@@ -215,22 +215,14 @@ controller.MainInputPage = function(parentController) {
     this._tableIdEl = $("#tableId");
     this._encounterNameEl = $("#encounterName");
     this._bonusRollEl = $("#bonusRoll");
+    this._pursuer = $("#pursuer");
+    this._pursuedButton = $("#pursuedButton");
 
-    this._inputFormEl.submit(function () {
-        self._lookupEncounter();
-        return false; // so it won't REALLY submit
-    });
-
-    this._inputFormEl.keydown(function() {
-        if (event.keyCode == 13) {
-            self._lookupEncounter();
-            return false;
-        }
-    });
+    $("#submitEncounterRequest").click(this._lookupEncounter.bind(this));
 
     $("#badlyLostButton").click(this._handleBadlyLostEncounter.bind(this));
     $("#imprisonedButton").click(this._handleJailerEncounter.bind(this));
-    $("#submitEncounterRequest").click(this._lookupEncounter.bind(this));
+    this._pursuedButton.click(this._handlePursuedEncounter.bind(this));
     $("#femaleLoveStruckButton").click(this._handleLoveStruckEncounter.bind(this, "female"));
     $("#maleLoveStruckButton").click(this._handleLoveStruckEncounter.bind(this, "male"));
 };
@@ -249,6 +241,17 @@ controller.MainInputPage.prototype = {
         this._paragraphNumberEl.val("");
         this._tableIdEl.val("");
         this._encounterNameEl.val("");
+        this._pursuedButton.css("display", "block");
+    },
+
+    _handlePursuedEncounter: function() {
+        var dieRoll = util.rollAD6(1);
+
+        if (dieRoll < 3) {
+            this._processEncounter("", "H", "Pursuing " + this._pursuer.val());
+        } else {
+            this._pursuedButton.css("display", "none");
+        }
     },
 
     _handleLoveStruckEncounter: function(gender) {
