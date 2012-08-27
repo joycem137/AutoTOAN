@@ -25,6 +25,10 @@ util.ParagraphConverters = {
         table:{
             html:"_convertTableJsonToHTML",
             text:"_convertTableJsonToText"
+        },
+        paragraph: {
+            html:"_convertParagraphJsonToHTML",
+            text:"_convertParagraphJsonToText"
         }
     },
 
@@ -52,6 +56,14 @@ util.ParagraphConverters = {
         return null;
     },
 
+    _convertParagraphJsonToHTML: function(paragraphData) {
+        return paragraphData.text;
+    },
+
+    _convertParagraphJsonToText: function(paragraphData) {
+        return paragraphData.text;
+    },
+
     /**
      * Convert the provided paragraph text to JSON, or return null if invalid.
      *
@@ -60,8 +72,8 @@ util.ParagraphConverters = {
      * Add this  to enable different types of lists to be entered.
      */
     _convertTextToJson:function (paragraphText) {
-        var fullEncounterTablePattern = /\d*(\.\s|\s|\)\s)(.*)\s\((\w)\)(\n|$)/g,
-            adjectiveOnlyTablePattern = /\d+(\.\s|\s|\)\s)(.*)(\n|$)/g,
+        var fullEncounterTablePattern = /^\d*(\.\s|\s|\)\s)(.*)\s\((\w)\)(\n|$)/g,
+            adjectiveOnlyTablePattern = /^\d+(\.\s|\s|\)\s)(.*)(\n|$)/g,
             matrixPatternForTable = /matrix[\:\)]?\s(\w)/,
             options, matchObj;
 
@@ -73,7 +85,7 @@ util.ParagraphConverters = {
             matchObj = matrixPatternForTable.exec(paragraphText);
             return { type:"table", matrix: matchObj[1], options:options };
         } else {
-            return null;
+            return { type:"paragraph", text:paragraphText};
         }
     },
 

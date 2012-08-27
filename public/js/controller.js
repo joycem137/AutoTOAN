@@ -273,6 +273,10 @@ controller.MainInputPage.prototype = {
             encounterButtonsToShow = [],
             encounterButton, i, style;
 
+        if (!checkStatus("pursued")) {
+            this._pursuer.val("");
+        }
+
         if (checkStatus("pursued") && !this._haveCheckedForPursuer) {
             encounterButtonsToShow.push(this._pursuedButton);
         } else if (checkStatus("loveStruck")) {
