@@ -109,6 +109,24 @@ model.ParagraphModel.prototype = {
     }
 };
 
+model.Player = function(name, color) {
+    this.name = name;
+    this.color = color;
+    this.destinyBonus = 0;
+    this._statusList = null;
+    this.manualDieRoll = false;
+};
+
+model.Player.prototype = {
+    set statusList(value) {
+        this._statusList = value;
+    },
+
+    checkStatus: function(statusName) {
+        return this._statusList && this._statusList.indexOf(statusName) >= 0;
+    }
+};
+
 /**
  * This represents a given encounter and what we learn about it.
  *
@@ -184,14 +202,6 @@ model.Encounter.prototype = {
         } else {
             return 0;
         }
-    },
-
-    set statusList(value) {
-        this._statusList = value;
-    },
-
-    checkStatus: function(statusName) {
-        return this._statusList && this._statusList.indexOf(statusName) >= 0;
     },
 
     set tableId(value) {
