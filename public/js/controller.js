@@ -66,9 +66,9 @@ controller.ActionsPage.prototype = {
             }
         }
 
-        if (encounter.checkStatus("loveStruck")) {
+        if (encounter.checkStatus("loveStruck") && onlyUseAction === "Court") {
             reactionPrompt = "Since you're <b>Love Struck</b>, You must choose to court.";
-        } else if (encounter.checkStatus("envious")) {
+        } else if (encounter.checkStatus("envious") && onlyUseAction === "Rob") {
             reactionPrompt = "Since you're <b>Envious</b>, you must choose to rob.";
         } else if (encounter.checkStatus("insane")) {
             reactionPrompt = "Since you're <b>Insane</b>, have another player select your action.";
