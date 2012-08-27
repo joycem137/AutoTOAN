@@ -135,7 +135,8 @@ controller.ParagraphDisplayPage.prototype = {
 
         if (paragraph.data) {
             headerText = "Paragraph " + paragraph.number;
-            bodyText = util.ParagraphConverters.convert(paragraph.data, "html");
+            bodyText = util.ParagraphConverters.convert(paragraph.data, "html", encounter);
+
             this._showResult(headerText, bodyText, false);
         } else {
             headerText = "Paragraph " + paragraph.number + " not found.  You may enter a paragraph below."

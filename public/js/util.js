@@ -37,30 +37,33 @@ util.ParagraphConverters = {
      * @param source
      * @param target
      */
-    convert:function (source, target) {
+    convert:function (source, target, encounter) {
         var converter,
             converterFuncName,
             converterFunc;
         if (typeof source === "string") {
             // We are converting text into Json
-            return this._convertTextToJson(source);
+            return this._convertTextToJson(source, encounter);
         } else {
             // We are converting json to plain text or HTML
             converter = this._converters[source.type];
             converterFuncName = converter && converter[target];
             converterFunc = converterFuncName && this[converterFuncName];
             if (converterFunc) {
-                return converterFunc(source);
+                return converterFunc(source, encounter);
             }
         }
         return null;
     },
 
-    _convertParagraphJsonToHTML: function(paragraphData) {
-        return paragraphData.text;
+    _convertParagraphJsonToHTML: function(paragraphData, encounter) {
+        var newText = paragraphData.text;
+        newText = newText.replace("the other", "the <b>" + encounter.name + "</b>");
+        newText = newText.replace("The other", "The <b>" + encounter.name + "</b>");
+        return newText;
     },
 
-    _convertParagraphJsonToText: function(paragraphData) {
+    _convertParagraphJsonToText: function(paragraphData, encounter) {
         return paragraphData.text;
     },
 
