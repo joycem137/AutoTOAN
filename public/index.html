@@ -41,21 +41,28 @@
         <button id="newEncounterButton" type="button">New Encounter</button>
 
         <div id="mainInputPage">
-            <h2>Encounter Lookup</h2><input type="checkbox" id="manualDieRoll"> Manual Die Rolling
             <form id="formParagraphRequest">
-                <b>Primary Encounter Data</b><br>
+                <h3>Encounter Lookup</h3>
                 Paragraph #: <input type="text" id="paragraphNumber"/>
-                Table id: <input type="text" id="tableId"/><br>
-                Encounter Name: <input type="text" id="encounterName"/>
-                <hr>
-                <b>Enter your Bonus information</b><br>
                 Location Bonus: <input type="text" id="bonusRoll"/><br>
-                Destiny Bonus:
+                Encounter Name: <input type="text" id="encounterName"/><br>
+                Table id: <input type="text" id="tableId"/><br>
+                <hr>
+                <h3>Player Selection</h3>
+                <input type="radio" name="player" value="red" checked/> Aladdin
+                <input type="radio" name="player" value="yellow" checked/> Zumurrud
+                <input type="radio" name="player" value="blue" checked/> Sinbad
+                <input type="radio" name="player" value="black" checked/> Ali Baba
+                <input type="radio" name="player" value="green" checked/> Scheherazade
+                <input type="radio" name="player" value="white" checked/> Ma'aruf
+                <hr>
+                <h3>Player Information</h3>
+                <input type="checkbox" id="manualDieRoll"/> Manual Die Rolling<br>
+                <br>Destiny Point Bonus:<br>
                 <input type="radio" name="bonus" value=0 checked/> None
                 <input type="radio" name="bonus" value=1 /> +1
-                <input type="radio" name="bonus" value=2 /> +2
-                <hr>
-                <b>Statuses:</b><br>
+                <input type="radio" name="bonus" value=2 /> +2<br>
+                <br><b>Statuses:</b><br>
                 <input type="checkbox" name="status" value="accursed" /> Accursed <br>
                 <input type="checkbox" name="status" value="beastForm" /> Beast Form <br>
                 <input type="checkbox" name="status" value="blessed" /> Blessed <br>

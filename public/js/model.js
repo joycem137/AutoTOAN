@@ -128,6 +128,20 @@ model.Player.prototype = {
 };
 
 /**
+ * A model of all of our players.
+ */
+model.Players = function() {
+    this.red = new model.Player("Aladdin", "red");
+    this.yellow = new model.Player("Zumurrud", "yellow");
+    this.blue = new model.Player("Sinbad", "blue");
+    this.black = new model.Player("Ali Baba", "black");
+    this.green = new model.Player("Scheherazade", "green");
+    this.white = new model.Player("Ma'aruf", "white");
+
+    this.currentPlayer = this.red;
+};
+
+/**
  * This represents a given encounter and what we learn about it.
  *
  * @param name {String} The full adjective + noun name of what is being encountered.

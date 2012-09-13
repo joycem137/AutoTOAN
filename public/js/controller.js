@@ -206,9 +206,8 @@ controller.ParagraphDisplayPage.prototype = {
  * @param parentController
  * @constructor
  */
-controller.MainInputPage = function(parentController) {
+controller.MainInputPage = function(parentController, playerModel) {
     this._parentController = parentController;
-    this._playerModel = new model.Player("Dummy");
 
     this._pageElement = $("#mainInputPage");
     this._inputFormEl = $("#formParagraphRequest");
@@ -244,6 +243,12 @@ controller.MainInputPage = function(parentController) {
         this._maleLoveStruckButton,
         this._submitEncounterButton
     ];
+
+    this._playerModel = playerModel;
+    $("input[name=player]").each(function() {
+        this.checked = this.value === playerModel.currentPlayer.color;
+    });
+    this._evaluateStatus();
 };
 
 controller.MainInputPage.prototype = {
@@ -254,11 +259,6 @@ controller.MainInputPage.prototype = {
 
     hide: function() {
         this._pageElement.css("display", "none");
-    },
-
-    setPlayerModel: function(playerModel) {
-        this._playerModel = playerModel;
-        this._evaluateStatus();
     },
 
     reset: function() {
@@ -275,28 +275,29 @@ controller.MainInputPage.prototype = {
      * of the various encounter buttons
      */
     _evaluateStatus: function() {
-        var model = this._playerModel,
-            encounterButtonsToShow = [],
+        var encounterButtonsToShow = [],
+            currentPlayer,
             encounterButton, i, style;
 
         this._updatePlayerModel();
+        currentPlayer = this._playerModel.currentPlayer;
 
         // Clean up our statuses.
-        if (!model.checkStatus("pursued")) {
+        if (!currentPlayer.checkStatus("pursued")) {
             this._pursuer.val("");
         }
 
-        if (model.checkStatus("pursued") && !this._haveCheckedForPursuer) {
+        if (currentPlayer.checkStatus("pursued") && !this._haveCheckedForPursuer) {
             encounterButtonsToShow.push(this._pursuedButton);
-        } else if (model.checkStatus("loveStruck")) {
+        } else if (currentPlayer.checkStatus("loveStruck")) {
             encounterButtonsToShow.push(this._maleLoveStruckButton);
             encounterButtonsToShow.push(this._femaleLoveStruckButton);
-        } else if (model.checkStatus("imprisoned")) {
+        } else if (currentPlayer.checkStatus("imprisoned")) {
             encounterButtonsToShow.push(this._imprisonedButton);
         } else {
             encounterButtonsToShow.push(this._submitEncounterButton);
 
-            if (model.checkStatus("lost")) {
+            if (currentPlayer.checkStatus("lost")) {
                 encounterButtonsToShow.push(this._badlyLostButton);
             }
         }
@@ -314,18 +315,37 @@ controller.MainInputPage.prototype = {
     },
 
     _updatePlayerModel: function() {
-        var checkedStatuses = $("input[name=status]:checked"),
+        var selectedPlayerColor = $("input[name=player]:checked").val(),
+            selectedPlayer = this._playerModel[selectedPlayerColor],
             statusList = [],
             model = this._playerModel;
 
-        // Now handle the statuses
-        checkedStatuses.each(function() {
-            statusList.push(this.value);
-        });
+        if (selectedPlayer !== this._playerModel.currentPlayer) {
+            // Select a new current player.
+            this._playerModel.currentPlayer = selectedPlayer;
 
-        model.statusList = statusList;
-        model.manualDieRoll = this._manualDieRoll.prop("checked");
-        model.destinyBonus = parseInt($("input[name=bonus]:checked").val(), 10);
+            //Update the status list for the new player.
+            $("input[name=status]").each(function() {
+                this.checked = selectedPlayer.checkStatus(this.value);
+            });
+
+            // Update the destiny bonus
+            $("input[name=bonus]").each(function() {
+                this.checked = selectedPlayer.destinyBonus === parseInt(this.value,10);
+            });
+
+            // Finally, update the manual die roll.
+            this._manualDieRoll.prop("checked", selectedPlayer.manualDieRoll);
+        } else {
+            // Write to the current player.
+            $("input[name=status]:checked").each(function() {
+                statusList.push(this.value);
+            });
+            selectedPlayer.statusList = statusList;
+
+            selectedPlayer.manualDieRoll = this._manualDieRoll.prop("checked");
+            selectedPlayer.destinyBonus = parseInt($("input[name=bonus]:checked").val(), 10);
+        }
     },
 
     _handlePursuedEncounter: function() {
@@ -413,7 +433,7 @@ controller.MainInputPage.prototype = {
         this.reset();
         this._updatePlayerModel();
 
-        bonusToRoll = this._playerModel.destinyBonus + locationBonus;
+        bonusToRoll = this._playerModel.currentPlayer.destinyBonus + locationBonus;
 
         // Create the encounter object we're going to be using.
         encounter = new model.Encounter(paragraphNumber,tableId, encounterName, bonusToRoll);
@@ -567,7 +587,7 @@ controller.SidebarController.prototype = {
 controller.mainController = {
     onDocumentReady: function() {
         this._currentEncounter = null;
-        this._currentPlayer = new model.Player("Player", "Any Color");
+        this._playerModel = new model.Players();
 
         model.reactionTables.load();
         this._paragraphModel = new model.ParagraphModel();
@@ -582,7 +602,7 @@ controller.mainController = {
     _buildPages: function() {
         this._paragraphDisplayPage = new controller.ParagraphDisplayPage(this._paragraphModel, this);
         this._actionsPage = new controller.ActionsPage(this);
-        this._mainInputPage = new controller.MainInputPage(this);
+        this._mainInputPage = new controller.MainInputPage(this, this._playerModel);
         this._dieRollPage = new controller.DieRollPage();
         this._sidebar = new controller.SidebarController();
     },
@@ -601,7 +621,6 @@ controller.mainController = {
      */
     _inputNewEncounter: function (){
         this._sidebar.clear();
-        this._mainInputPage.setPlayerModel(this._currentPlayer);
         this._showPage(this._mainInputPage);
     },
 
@@ -674,7 +693,7 @@ controller.mainController = {
      */
     handleReactionTable: function() {
         this._showPage(this._actionsPage);
-        this._actionsPage.displayEncounterOptions(this._currentEncounter, this._currentPlayer);
+        this._actionsPage.displayEncounterOptions(this._currentEncounter, this._playerModel.currentPlayer);
         this._sidebar.update();
     },
 
@@ -699,7 +718,7 @@ controller.mainController = {
      */
     requestAD6Roll: function(callback, options) {
         var reason,
-            player = this._currentPlayer;
+            player = this._playerModel.currentPlayer;
 
         if (player.checkStatus("blessed")) {
             reason = "Since you are <b>Blessed</b>, you may manually enter an option.";
@@ -724,7 +743,7 @@ controller.mainController = {
      * @param centerParagraph
      */
     requestADestinyRoll: function(callback, centerParagraph) {
-        if (this._currentPlayer.manualDieRoll) {
+        if (this._playerModel.currentPlayer.manualDieRoll) {
             this._showPage(this._dieRollPage);
             this._dieRollPage.requestDestinyRoll(callback, centerParagraph);
         } else {
